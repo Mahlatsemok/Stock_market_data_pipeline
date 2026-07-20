@@ -6,11 +6,13 @@ def main():
     print("Stock Market Data Pipeline")
     print("=" * 40)
 
-    extract_stock_data()
+    data = extract_stock_data()
 
-    print("Pipeline completed.")
+    print()
+    print(data)
+
+    print("\nPipeline completed successfully!")
 
 
 if __name__ == "__main__":
     main()
-    
