@@ -1,29 +1,59 @@
+import pandas as pd
+
 from scripts.extract import extract_stock_data
 from scripts.transform import transform_stock_data
 from scripts.load import load_to_database
 
 
 def main():
-    print("=" * 40)
+
+    print("=" * 50)
     print("Stock Market Data Pipeline")
-    print("=" * 40)
+    print("=" * 50)
 
-    # Extract
-    raw_data = extract_stock_data()
+    tickers = [
+        "AAPL",
+        "MSFT",
+        "TSLA",
+        "NVDA"
+    ]
 
-    print()
+    processed_data = []
 
-    # Transform
-    processed_data = transform_stock_data(raw_data)
+    for ticker in tickers:
 
-    # Load
-    load_to_database(processed_data)
+        print(f"\nProcessing {ticker}...")
 
-    #print("\nFirst 5 rows of transformed data:\n")
-    print(processed_data)
+        # Extract
+        raw_data = extract_stock_data(ticker)
 
-    print("\nPipeline completed successfully!")
+        # Transform
+        transformed_data = transform_stock_data(
+            raw_data,
+            ticker
+        )
+
+        processed_data.append(
+            transformed_data
+        )
+
+    # Combine all stocks
+    print("\nCombining stock data...")
+
+    all_stock_data = pd.concat(
+        processed_data,
+        ignore_index=True
+    )
+
+    # Load into database
+    load_to_database(
+        all_stock_data
+    )
+
+    print("\n" + "=" * 50)
+    print("Pipeline completed successfully!")
+    print("=" * 50)
 
 
 if __name__ == "__main__":
-    main() 
+    main()

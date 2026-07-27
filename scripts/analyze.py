@@ -4,53 +4,169 @@ import pandas as pd
 
 def analyze_stock_data():
     """
-    Run analysis queries on the stock market database.
+    Analyze stock market data stored in the SQLite database.
     """
 
-    print("Analyzing stock market data...")
+    print("=" * 60)
+    print("STOCK MARKET DATA ANALYSIS")
+    print("=" * 60)
 
-    engine = create_engine("sqlite:///database/stocks.db")
+    # Connect to database
+    engine = create_engine(
+        "sqlite:///database/stocks.db"
+    )
 
-    query = "SELECT * FROM stocks"
+    # Load stock data from database
+    query = """
+        SELECT *
+        FROM stocks
+    """
 
-    df = pd.read_sql(query, engine)
+    df = pd.read_sql(
+        query,
+        engine
+    )
 
-    print("\nTotal number of records:")
-    print(len(df))
+    # ------------------------------------------------
+    # 1. Total records
+    # ------------------------------------------------
 
-    highest_close = df["Close"].max()
+    print("\nTotal records per stock:")
 
-    print("\nHighest closing price:")
+    record_counts = (
+        df.groupby("Ticker")
+        .size()
+        .sort_values(ascending=False)
+    )
+
+    print(record_counts)
+
+    # ------------------------------------------------
+    # 2. Highest closing price
+    # ------------------------------------------------
+
+    print("\nHighest closing price per stock:")
+
+    highest_close = (
+        df.groupby("Ticker")["Close"]
+        .max()
+        .sort_values(ascending=False)
+    )
+
     print(highest_close)
 
-    lowest_close = df["Close"].min()
+    # ------------------------------------------------
+    # 3. Lowest closing price
+    # ------------------------------------------------
 
-    print("\nLowest closing price:")
+    print("\nLowest closing price per stock:")
+
+    lowest_close = (
+        df.groupby("Ticker")["Close"]
+        .min()
+        .sort_values()
+    )
+
     print(lowest_close)
 
-    average_close = df["Close"].mean()
+    # ------------------------------------------------
+    # 4. Average closing price
+    # ------------------------------------------------
 
-    print("\nAverage closing price:")
+    print("\nAverage closing price per stock:")
+
+    average_close = (
+        df.groupby("Ticker")["Close"]
+        .mean()
+        .sort_values(ascending=False)
+    )
+
     print(average_close)
 
-    average_volume = df["Volume"].mean()
+    # ------------------------------------------------
+    # 5. Average trading volume
+    # ------------------------------------------------
 
-    print("\nAverage trading volume:")
+    print("\nAverage trading volume per stock:")
+
+    average_volume = (
+        df.groupby("Ticker")["Volume"]
+        .mean()
+        .sort_values(ascending=False)
+    )
+
     print(average_volume)
 
-    highest_return = df["Daily_Return"].max()
+    # ------------------------------------------------
+    # 6. Best daily return
+    # ------------------------------------------------
 
-    print("\nHighest daily return (%):")
-    print(highest_return)
+    print("\nBest daily return per stock (%):")
 
-    lowest_return = df["Daily_Return"].min()
+    best_return = (
+        df.groupby("Ticker")["Daily_Return"]
+        .max()
+        .sort_values(ascending=False)
+    )
 
-    print("\nLowest daily return (%):")
-    print(lowest_return)
+    print(best_return)
 
-    return df
+    # ------------------------------------------------
+    # 7. Worst daily return
+    # ------------------------------------------------
+
+    print("\nWorst daily return per stock (%):")
+
+    worst_return = (
+        df.groupby("Ticker")["Daily_Return"]
+        .min()
+        .sort_values()
+    )
+
+    print(worst_return)
+
+    # ------------------------------------------------
+    # 8. Average daily return
+    # ------------------------------------------------
+
+    print("\nAverage daily return per stock (%):")
+
+    average_return = (
+        df.groupby("Ticker")["Daily_Return"]
+        .mean()
+        .sort_values(ascending=False)
+    )
+
+    print(average_return)
+
+    # ------------------------------------------------
+    # 9. Volatility
+    # ------------------------------------------------
+
+    print("\nDaily return volatility per stock (%):")
+
+    volatility = (
+        df.groupby("Ticker")["Daily_Return"]
+        .std()
+        .sort_values(ascending=False)
+    )
+
+    print(volatility)
+
+    # ------------------------------------------------
+    # 10. Best performing stock
+    # ------------------------------------------------
+
+    best_stock = average_return.idxmax()
+
+    print("\nBest performing stock based on average daily return:")
+
+    print(best_stock)
+
+    print("\n" + "=" * 60)
+    print("ANALYSIS COMPLETED")
+    print("=" * 60)
 
 
 if __name__ == "__main__":
     analyze_stock_data()
-    

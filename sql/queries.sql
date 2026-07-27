@@ -1,51 +1,104 @@
--- 1. Get all stock records
-SELECT *
-FROM stocks;
+-- ============================================
+-- STOCK MARKET DATA ANALYSIS
+-- ============================================
 
 
--- 2. Find the highest closing price
-SELECT MAX(Close) AS highest_closing_price
-FROM stocks;
+-- 1. Count records for each stock
+
+SELECT
+    Ticker,
+    COUNT(*) AS total_records
+FROM stocks
+GROUP BY Ticker;
 
 
--- 3. Find the lowest closing price
-SELECT MIN(Close) AS lowest_closing_price
-FROM stocks;
+-- 2. Highest closing price
+
+SELECT
+    Ticker,
+    MAX(Close) AS highest_closing_price
+FROM stocks
+GROUP BY Ticker
+ORDER BY highest_closing_price DESC;
 
 
--- 4. Calculate the average closing price
-SELECT AVG(Close) AS average_closing_price
-FROM stocks;
+-- 3. Lowest closing price
+
+SELECT
+    Ticker,
+    MIN(Close) AS lowest_closing_price
+FROM stocks
+GROUP BY Ticker
+ORDER BY lowest_closing_price ASC;
 
 
--- 5. Calculate the average trading volume
-SELECT AVG(Volume) AS average_trading_volume
-FROM stocks;
+-- 4. Average closing price
+
+SELECT
+    Ticker,
+    AVG(Close) AS average_closing_price
+FROM stocks
+GROUP BY Ticker
+ORDER BY average_closing_price DESC;
 
 
--- 6. Find the top 10 highest closing prices
-SELECT Date, Close
+-- 5. Average trading volume
+
+SELECT
+    Ticker,
+    AVG(Volume) AS average_trading_volume
+FROM stocks
+GROUP BY Ticker
+ORDER BY average_trading_volume DESC;
+
+
+-- 6. Best daily return
+
+SELECT
+    Ticker,
+    MAX(Daily_Return) AS best_daily_return
+FROM stocks
+GROUP BY Ticker
+ORDER BY best_daily_return DESC;
+
+
+-- 7. Worst daily return
+
+SELECT
+    Ticker,
+    MIN(Daily_Return) AS worst_daily_return
+FROM stocks
+GROUP BY Ticker
+ORDER BY worst_daily_return ASC;
+
+
+-- 8. Average daily return
+
+SELECT
+    Ticker,
+    AVG(Daily_Return) AS average_daily_return
+FROM stocks
+GROUP BY Ticker
+ORDER BY average_daily_return DESC;
+
+
+-- 9. Highest closing price across all stocks
+
+SELECT
+    Ticker,
+    Date,
+    Close
 FROM stocks
 ORDER BY Close DESC
 LIMIT 10;
 
 
--- 7. Find the top 10 highest trading volume days
-SELECT Date, Volume
+-- 10. Highest trading volume days
+
+SELECT
+    Ticker,
+    Date,
+    Volume
 FROM stocks
 ORDER BY Volume DESC
-LIMIT 10;
-
-
--- 8. Find the best daily returns
-SELECT Date, Daily_Return
-FROM stocks
-ORDER BY Daily_Return DESC
-LIMIT 10;
-
-
--- 9. Find the worst daily returns
-SELECT Date, Daily_Return
-FROM stocks
-ORDER BY Daily_Return ASC
 LIMIT 10;

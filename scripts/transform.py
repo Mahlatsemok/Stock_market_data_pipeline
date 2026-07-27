@@ -1,70 +1,90 @@
 import os
+
 import pandas as pd
 
 
-def transform_stock_data(df):
+def transform_stock_data(df, ticker):
     """
-    Clean and transform stock market data.
+    Clean and transform stock market data for a specific ticker.
     """
 
-    print("Transforming stock market data...")
+    print(f"Transforming data for {ticker}...")
 
-    # Make a copy so we don't modify the original
+    # Make a copy so we don't modify the original DataFrame
     df = df.copy()
 
-    # -----------------------------
     # Flatten MultiIndex columns if needed
-    # -----------------------------
     if isinstance(df.columns, pd.MultiIndex):
         df.columns = df.columns.get_level_values(0)
 
-    # -----------------------------
-    # Remove duplicates
-    # -----------------------------
-    df.drop_duplicates(inplace=True)
-
-    # -----------------------------
-    # Remove missing values
-    # -----------------------------
-    df.dropna(inplace=True)
-
-    # -----------------------------
-    # Convert Date column
-    # -----------------------------
+    # Reset index so Date becomes a normal column
     df.reset_index(inplace=True)
+
+    # Convert Date to datetime
     df["Date"] = pd.to_datetime(df["Date"])
 
-    # -----------------------------
-    # Sort by Date
-    # -----------------------------
-    df.sort_values("Date", inplace=True)
+    # Add ticker to identify the stock
+    df["Ticker"] = ticker
 
-    # -----------------------------
-    # Daily Return (%)
-    # -----------------------------
-    df["Daily_Return"] = df["Close"].pct_change() * 100
+    # Remove duplicate rows
+    df.drop_duplicates(inplace=True)
 
-    # -----------------------------
-    # 5-Day Moving Average
-    # -----------------------------
-    df["MA5"] = df["Close"].rolling(window=5).mean()
+    # Sort by ticker and date
+    df.sort_values(
+        by=["Ticker", "Date"],
+        inplace=True
+    )
 
-    # -----------------------------
-    # 20-Day Moving Average
-    # -----------------------------
-    df["MA20"] = df["Close"].rolling(window=20).mean()
+    # Remove rows with missing important values
+    df.dropna(
+        subset=["Open", "High", "Low", "Close", "Volume"],
+        inplace=True
+    )
 
-    # -----------------------------
-    # Create folder
-    # -----------------------------
-    os.makedirs("data/processed", exist_ok=True)
+    # ------------------------------------------------
+    # Group calculations by ticker
+    # ------------------------------------------------
 
-    # -----------------------------
-    # Save cleaned data
-    # -----------------------------
-    output_file = "data/processed/apple_stock_clean.csv"
-    df.to_csv(output_file, index=False)
+    # Calculate Daily Return separately for each stock
+    df["Daily_Return"] = (
+        df.groupby("Ticker")["Close"]
+        .pct_change() * 100
+    )
 
-    print(f"Processed data saved to {output_file}")
+    # Calculate 5-day moving average separately for each stock
+    df["MA5"] = (
+        df.groupby("Ticker")["Close"]
+        .transform(
+            lambda x: x.rolling(window=5).mean()
+        )
+    )
+
+    # Calculate 20-day moving average separately for each stock
+    df["MA20"] = (
+        df.groupby("Ticker")["Close"]
+        .transform(
+            lambda x: x.rolling(window=20).mean()
+        )
+    )
+
+    # Create processed data folder
+    os.makedirs(
+        "data/processed",
+        exist_ok=True
+    )
+
+    # Save processed data
+    output_file = (
+        f"data/processed/{ticker}_stock_clean.csv"
+    )
+
+    df.to_csv(
+        output_file,
+        index=False
+    )
+
+    print(
+        f"Processed data saved to {output_file}"
+    )
 
     return df
