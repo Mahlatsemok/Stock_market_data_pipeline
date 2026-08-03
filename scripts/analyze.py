@@ -28,7 +28,7 @@ def analyze_stock_data():
     )
 
     # ------------------------------------------------
-    # 1. Total records
+    # Total records
     # ------------------------------------------------
 
     print("\nTotal records per stock:")
@@ -42,7 +42,7 @@ def analyze_stock_data():
     print(record_counts)
 
     # ------------------------------------------------
-    # 2. Highest closing price
+    # Highest closing price
     # ------------------------------------------------
 
     print("\nHighest closing price per stock:")
@@ -56,7 +56,7 @@ def analyze_stock_data():
     print(highest_close)
 
     # ------------------------------------------------
-    # 3. Lowest closing price
+    # Lowest closing price
     # ------------------------------------------------
 
     print("\nLowest closing price per stock:")
@@ -70,7 +70,7 @@ def analyze_stock_data():
     print(lowest_close)
 
     # ------------------------------------------------
-    # 4. Average closing price
+    # Average closing price
     # ------------------------------------------------
 
     print("\nAverage closing price per stock:")
@@ -84,7 +84,7 @@ def analyze_stock_data():
     print(average_close)
 
     # ------------------------------------------------
-    # 5. Average trading volume
+    # Average trading volume
     # ------------------------------------------------
 
     print("\nAverage trading volume per stock:")
@@ -98,7 +98,7 @@ def analyze_stock_data():
     print(average_volume)
 
     # ------------------------------------------------
-    # 6. Best daily return
+    # Best daily return
     # ------------------------------------------------
 
     print("\nBest daily return per stock (%):")
@@ -112,7 +112,7 @@ def analyze_stock_data():
     print(best_return)
 
     # ------------------------------------------------
-    # 7. Worst daily return
+    # Worst daily return
     # ------------------------------------------------
 
     print("\nWorst daily return per stock (%):")
@@ -126,7 +126,7 @@ def analyze_stock_data():
     print(worst_return)
 
     # ------------------------------------------------
-    # 8. Average daily return
+    # Average daily return
     # ------------------------------------------------
 
     print("\nAverage daily return per stock (%):")
@@ -140,7 +140,7 @@ def analyze_stock_data():
     print(average_return)
 
     # ------------------------------------------------
-    # 9. Volatility
+    # Volatility
     # ------------------------------------------------
 
     print("\nDaily return volatility per stock (%):")
@@ -154,7 +154,7 @@ def analyze_stock_data():
     print(volatility)
 
     # ------------------------------------------------
-    # 10. Best performing stock
+    # Best performing stock
     # ------------------------------------------------
 
     best_stock = average_return.idxmax()
@@ -162,6 +162,18 @@ def analyze_stock_data():
     print("\nBest performing stock based on average daily return:")
 
     print(best_stock)
+
+    # ------------------------------------------------
+    # Most volatile stock
+    # ------------------------------------------------
+
+    most_volatile_stock = volatility.idxmax()
+
+    print(
+        "\nMost volatile stock:"
+    )
+
+    print(most_volatile_stock)
 
     print("\n" + "=" * 60)
     print("ANALYSIS COMPLETED")

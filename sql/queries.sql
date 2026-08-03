@@ -3,16 +3,17 @@
 -- ============================================
 
 
--- 1. Count records for each stock
+-- Count records for each stock
 
 SELECT
     Ticker,
     COUNT(*) AS total_records
 FROM stocks
 GROUP BY Ticker;
+GROUP BY total_records DESC;
 
 
--- 2. Highest closing price
+-- Highest closing price
 
 SELECT
     Ticker,
@@ -22,7 +23,7 @@ GROUP BY Ticker
 ORDER BY highest_closing_price DESC;
 
 
--- 3. Lowest closing price
+-- Lowest closing price
 
 SELECT
     Ticker,
@@ -32,7 +33,7 @@ GROUP BY Ticker
 ORDER BY lowest_closing_price ASC;
 
 
--- 4. Average closing price
+-- Average closing price
 
 SELECT
     Ticker,
@@ -42,7 +43,7 @@ GROUP BY Ticker
 ORDER BY average_closing_price DESC;
 
 
--- 5. Average trading volume
+-- Average trading volume
 
 SELECT
     Ticker,
@@ -52,7 +53,7 @@ GROUP BY Ticker
 ORDER BY average_trading_volume DESC;
 
 
--- 6. Best daily return
+-- Best daily return
 
 SELECT
     Ticker,
@@ -62,7 +63,7 @@ GROUP BY Ticker
 ORDER BY best_daily_return DESC;
 
 
--- 7. Worst daily return
+-- Worst daily return
 
 SELECT
     Ticker,
@@ -72,7 +73,7 @@ GROUP BY Ticker
 ORDER BY worst_daily_return ASC;
 
 
--- 8. Average daily return
+-- Average daily return
 
 SELECT
     Ticker,
@@ -82,7 +83,17 @@ GROUP BY Ticker
 ORDER BY average_daily_return DESC;
 
 
--- 9. Highest closing price across all stocks
+-- Daily return volatility per stock
+
+SELECT
+    Ticker,
+    AVG(Daily_Return) AS average_daily_return
+FROM stocks
+GROUP BY Ticker
+ORDER BY average_daily_return DESC;
+
+
+-- Highest closing price across all stocks
 
 SELECT
     Ticker,
@@ -93,7 +104,7 @@ ORDER BY Close DESC
 LIMIT 10;
 
 
--- 10. Highest trading volume days
+-- Highest trading volume days
 
 SELECT
     Ticker,
@@ -102,3 +113,14 @@ SELECT
 FROM stocks
 ORDER BY Volume DESC
 LIMIT 10;
+
+
+-- Best performing stock
+
+SELECT
+    Ticker,
+    AVG(Daily_Return) AS average_daily_return
+FROM stocks
+GROUP BY Ticker
+ORDER BY average_daily_return DESC
+LIMIT 1;
