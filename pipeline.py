@@ -1,35 +1,62 @@
 import pandas as pd
 
-from scripts.extract import extract_stock_data
-from scripts.transform import transform_stock_data
-from scripts.load import load_to_database
+from stock_pipeline.extract.yahoo_finance import (
+    extract_stock_data
+)
+
+from stock_pipeline.transform.stocks import (
+    transform_stock_data
+)
+
+from stock_pipeline.quality.validation import (
+    validate_stock_data
+)
+
+
+TICKERS = [
+    "AAPL",
+    "MSFT",
+    "TSLA",
+    "NVDA"
+]
 
 
 def main():
 
-    print("=" * 50)
-    print("Stock Market Data Pipeline")
-    print("=" * 50)
-
-    tickers = [
-        "AAPL",
-        "MSFT",
-        "TSLA",
-        "NVDA"
-    ]
+    print("=" * 60)
+    print("STOCK MARKET DATA PIPELINE")
+    print("=" * 60)
 
     processed_data = []
 
-    for ticker in tickers:
+    for ticker in TICKERS:
 
         print(f"\nProcessing {ticker}...")
 
+        # -----------------------------
         # Extract
-        raw_data = extract_stock_data(ticker)
+        # -----------------------------
 
+        raw_data = extract_stock_data(
+            ticker,
+            period="10y"
+        )
+
+        # -----------------------------
         # Transform
+        # -----------------------------
+
         transformed_data = transform_stock_data(
             raw_data,
+            ticker
+        )
+
+        # -----------------------------
+        # Validate
+        # -----------------------------
+
+        validate_stock_data(
+            transformed_data,
             ticker
         )
 
@@ -45,14 +72,11 @@ def main():
         ignore_index=True
     )
 
-    # Load into database
-    load_to_database(
-        all_stock_data
+    print(
+        f"Total records: {len(all_stock_data):,}"
     )
 
-    print("\n" + "=" * 50)
-    print("Pipeline completed successfully!")
-    print("=" * 50)
+    print("\nPipeline completed successfully!")
 
 
 if __name__ == "__main__":
