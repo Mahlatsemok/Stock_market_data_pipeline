@@ -1,4 +1,11 @@
+import logging
+
 import pandas as pd
+
+from stock_pipeline.config import (
+    load_tickers,
+    FAILED_TICKERS_FILE
+)
 
 from stock_pipeline.extract.yahoo_finance import (
     extract_stock_data
@@ -12,71 +19,238 @@ from stock_pipeline.quality.validation import (
     validate_stock_data
 )
 
+from stock_pipeline.logging_config import (
+    setup_logging
+)
 
-TICKERS = [
-    "AAPL",
-    "MSFT",
-    "TSLA",
-    "NVDA"
-]
+
+logger = logging.getLogger(__name__)
 
 
 def main():
 
-    print("=" * 60)
-    print("STOCK MARKET DATA PIPELINE")
-    print("=" * 60)
+    setup_logging()
+
+    logger.info("=" * 60)
+    logger.info("STOCK MARKET DATA PIPELINE")
+    logger.info("=" * 60)
+
+    # Load 100 tickers
+    tickers = load_tickers()
+
+    logger.info(
+        "Stocks configured: %d",
+        len(tickers)
+    )
 
     processed_data = []
 
-    for ticker in TICKERS:
+    failed_tickers = []
 
-        print(f"\nProcessing {ticker}...")
+    # ========================================================
+    # PROCESS EACH STOCK
+    # ========================================================
 
-        # -----------------------------
+    for ticker in tickers:
+
+        logger.info(
+            "Processing %s...",
+            ticker
+        )
+
+        # ----------------------------------------------------
         # Extract
-        # -----------------------------
+        # ----------------------------------------------------
 
         raw_data = extract_stock_data(
             ticker,
             period="10y"
         )
 
-        # -----------------------------
+        # ----------------------------------------------------
+        # Handle extraction failure
+        # ----------------------------------------------------
+
+        if raw_data.empty:
+
+            logger.warning(
+                "Skipping %s because extraction failed.",
+                ticker
+            )
+
+            failed_tickers.append(
+                {
+                    "Ticker": ticker,
+                    "Reason": "No data returned"
+                }
+            )
+
+            continue
+
+        # ----------------------------------------------------
         # Transform
-        # -----------------------------
+        # ----------------------------------------------------
 
-        transformed_data = transform_stock_data(
-            raw_data,
-            ticker
-        )
+        try:
 
-        # -----------------------------
+            transformed_data = (
+                transform_stock_data(
+                    raw_data,
+                    ticker
+                )
+            )
+
+        except Exception as error:
+
+            logger.error(
+                "Transformation failed for %s: %s",
+                ticker,
+                error
+            )
+
+            failed_tickers.append(
+                {
+                    "Ticker": ticker,
+                    "Reason": (
+                        f"Transformation failed: {error}"
+                    )
+                }
+            )
+
+            continue
+
+        # ----------------------------------------------------
         # Validate
-        # -----------------------------
+        # ----------------------------------------------------
 
-        validate_stock_data(
-            transformed_data,
-            ticker
-        )
+        try:
+
+            validate_stock_data(
+                transformed_data,
+                ticker
+            )
+
+        except Exception as error:
+
+            logger.error(
+                "Validation failed for %s: %s",
+                ticker,
+                error
+            )
+
+            failed_tickers.append(
+                {
+                    "Ticker": ticker,
+                    "Reason": (
+                        f"Validation failed: {error}"
+                    )
+                }
+            )
+
+            continue
+
+        # ----------------------------------------------------
+        # Store successful result
+        # ----------------------------------------------------
 
         processed_data.append(
             transformed_data
         )
 
-    # Combine all stocks
-    print("\nCombining stock data...")
+    # ========================================================
+    # COMBINE DATA
+    # ========================================================
+
+    logger.info(
+        "Combining stock data..."
+    )
+
+    if not processed_data:
+
+        logger.error(
+            "No stocks were successfully processed."
+        )
+
+        return
 
     all_stock_data = pd.concat(
         processed_data,
         ignore_index=True
     )
 
-    print(
-        f"Total records: {len(all_stock_data):,}"
+    logger.info(
+        "Total records: %s",
+        f"{len(all_stock_data):,}"
     )
 
-    print("\nPipeline completed successfully!")
+    # ========================================================
+    # SAVE FAILED TICKERS
+    # ========================================================
+
+    if failed_tickers:
+
+        failed_df = pd.DataFrame(
+            failed_tickers
+        )
+
+        failed_df.to_csv(
+            FAILED_TICKERS_FILE,
+            index=False
+        )
+
+        logger.warning(
+            "%d stocks failed.",
+            len(failed_tickers)
+        )
+
+        logger.warning(
+            "Failed ticker report saved to %s",
+            FAILED_TICKERS_FILE
+        )
+
+    # ========================================================
+    # SUMMARY
+    # ========================================================
+
+    successful_count = (
+        len(processed_data)
+    )
+
+    failed_count = (
+        len(failed_tickers)
+    )
+
+    logger.info("=" * 60)
+
+    logger.info(
+        "PIPELINE SUMMARY"
+    )
+
+    logger.info(
+        "Configured stocks: %d",
+        len(tickers)
+    )
+
+    logger.info(
+        "Successful stocks: %d",
+        successful_count
+    )
+
+    logger.info(
+        "Failed stocks: %d",
+        failed_count
+    )
+
+    logger.info(
+        "Total records: %s",
+        f"{len(all_stock_data):,}"
+    )
+
+    logger.info(
+        "Pipeline completed."
+    )
+
+    logger.info("=" * 60)
 
 
 if __name__ == "__main__":

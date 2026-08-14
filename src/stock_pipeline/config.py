@@ -1,23 +1,85 @@
 from pathlib import Path
 
+import yaml
 
-# Project root directory
+
+# ============================================================
+# PROJECT ROOT
+# ============================================================
+
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
-# Data directories
+
+# ============================================================
+# DIRECTORIES
+# ============================================================
+
 DATA_DIR = PROJECT_ROOT / "data"
+
 RAW_DATA_DIR = DATA_DIR / "raw"
+
 PROCESSED_DATA_DIR = DATA_DIR / "processed"
+
 QUARANTINE_DIR = DATA_DIR / "quarantine"
 
-# Configuration directory
 CONFIG_DIR = PROJECT_ROOT / "config"
 
-# Database directory
 DATABASE_DIR = PROJECT_ROOT / "database"
 
-# Create required directories
-RAW_DATA_DIR.mkdir(parents=True, exist_ok=True)
-PROCESSED_DATA_DIR.mkdir(parents=True, exist_ok=True)
-QUARANTINE_DIR.mkdir(parents=True, exist_ok=True)
-DATABASE_DIR.mkdir(parents=True, exist_ok=True)
+
+# ============================================================
+# CONFIGURATION
+# ============================================================
+
+STOCKS_CONFIG_FILE = (
+    CONFIG_DIR / "stocks.yaml"
+)
+
+
+FAILED_TICKERS_FILE = (
+    QUARANTINE_DIR / "failed_tickers.csv"
+)
+
+
+# ============================================================
+# CREATE DIRECTORIES
+# ============================================================
+
+RAW_DATA_DIR.mkdir(
+    parents=True,
+    exist_ok=True
+)
+
+PROCESSED_DATA_DIR.mkdir(
+    parents=True,
+    exist_ok=True
+)
+
+QUARANTINE_DIR.mkdir(
+    parents=True,
+    exist_ok=True
+)
+
+DATABASE_DIR.mkdir(
+    parents=True,
+    exist_ok=True
+)
+
+
+# ============================================================
+# LOAD TICKERS
+# ============================================================
+
+def load_tickers():
+    """
+    Load stock tickers from stocks.yaml.
+    """
+
+    with open(
+        STOCKS_CONFIG_FILE,
+        "r"
+    ) as file:
+
+        config = yaml.safe_load(file)
+
+    return config["stocks"]

@@ -1,0 +1,131 @@
+stocks:
+
+  # Technology
+  - AAPL
+  - MSFT
+  - NVDA
+  - GOOGL
+  - GOOG
+  - AMZN
+  - META
+  - AVGO
+  - ORCL
+  - CRM
+  - AMD
+  - ADBE
+  - CSCO
+  - INTC
+  - IBM
+  - QCOM
+  - TXN
+  - NOW
+  - INTU
+  - AMAT
+
+  # Financial Services
+  - JPM
+  - BAC
+  - WFC
+  - C
+  - GS
+  - MS
+  - BLK
+  - SCHW
+  - USB
+  - PNC
+  - AXP
+  - COF
+  - SPGI
+  - CME
+  - ICE
+
+  # Healthcare
+  - UNH
+  - JNJ
+  - LLY
+  - PFE
+  - ABBV
+  - MRK
+  - TMO
+  - DHR
+  - BMY
+  - AMGN
+  - GILD
+  - CVS
+  - ISRG
+  - MDT
+
+  # Consumer
+  - WMT
+  - COST
+  - HD
+  - MCD
+  - NKE
+  - SBUX
+  - TGT
+  - LOW
+  - TJX
+  - BKNG
+
+  # Energy
+  - XOM
+  - CVX
+  - COP
+  - SLB
+  - EOG
+  - OXY
+  - MPC
+  - PSX
+  - HAL
+
+  # Industrials
+  - CAT
+  - DE
+  - GE
+  - HON
+  - UPS
+  - RTX
+  - BA
+  - LMT
+  - MMM
+
+  # Automotive
+  - TSLA
+  - F
+  - GM
+  - RIVN
+  - NIO
+
+  # Telecommunications / Media
+  - T
+  - VZ
+  - CMCSA
+  - DIS
+  - NFLX
+
+  # Semiconductors
+  #- MU
+  #- LRCX
+  #- KLAC
+  #- MRVL
+  #- ON
+  #- NXPI
+  #- SNPS
+  #- ADI
+
+ # Additional Companies
+  - V
+  - MA
+  - PLTR
+  - AMT
+  - ADP
+  - PEP
+  - LIN
+  #- RTX
+ # - SPGI
+  - PLD
+  - EQIX
+  - UBER
+  - ABNB
+  - PYPL
+  - CRWD

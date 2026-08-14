@@ -1,40 +1,100 @@
-import yfinance as yf
+import logging
+import time
+
 import pandas as pd
+import yfinance as yf
 
 from stock_pipeline.config import RAW_DATA_DIR
 
 
-def extract_stock_data(ticker: str, period: str = "10y") -> pd.DataFrame:
+logger = logging.getLogger(__name__)
+
+
+def extract_stock_data(
+    ticker: str,
+    period: str = "10y",
+    max_retries: int = 3
+) -> pd.DataFrame:
     """
     Extract historical stock data from Yahoo Finance.
+
+    Retries failed requests before returning an empty DataFrame.
     """
 
-    print(f"Downloading data for {ticker}...")
-
-    stock_data = yf.download(
-        ticker,
-        period=period,
-        auto_adjust=False,
-        progress=True
+    logger.info(
+        "Downloading data for %s...",
+        ticker
     )
 
-    if stock_data.empty:
-        raise ValueError(
-            f"No data returned from Yahoo Finance for {ticker}"
-        )
+    for attempt in range(1, max_retries + 1):
 
-    # Flatten MultiIndex columns if Yahoo Finance returns them
-    if isinstance(stock_data.columns, pd.MultiIndex):
-        stock_data.columns = stock_data.columns.get_level_values(0)
+        try:
 
-    # Add ticker
-    stock_data["Ticker"] = ticker
+            stock_data = yf.download(
+                ticker,
+                period=period,
+                auto_adjust=False,
+                progress=True
+            )
 
-    # Save raw data
-    output_file = RAW_DATA_DIR / f"{ticker}_stock.csv"
+            if stock_data.empty:
 
-    stock_data.to_csv(output_file)
+                logger.warning(
+                    "No data returned for %s "
+                    "(attempt %d/%d)",
+                    ticker,
+                    attempt,
+                    max_retries
+                )
 
-    print(f"Raw data saved to {output_file}")
+                if attempt < max_retries:
+                    time.sleep(2)
+                    continue
 
-    return stock_data
+                return pd.DataFrame()
+
+            # Flatten MultiIndex columns
+            if isinstance(
+                stock_data.columns,
+                pd.MultiIndex
+            ):
+                stock_data.columns = (
+                    stock_data.columns
+                    .get_level_values(0)
+                )
+
+            # Add ticker
+            stock_data["Ticker"] = ticker
+
+            # Save raw data
+            output_file = (
+                RAW_DATA_DIR /
+                f"{ticker}_stock.csv"
+            )
+
+            stock_data.to_csv(
+                output_file
+            )
+
+            logger.info(
+                "Raw data saved to %s",
+                output_file
+            )
+
+            return stock_data
+
+        except Exception as error:
+
+            logger.error(
+                "Failed to download %s "
+                "(attempt %d/%d): %s",
+                ticker,
+                attempt,
+                max_retries,
+                error
+            )
+
+            if attempt < max_retries:
+                time.sleep(2)
+
+    return pd.DataFrame()
