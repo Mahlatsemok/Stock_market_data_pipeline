@@ -26,6 +26,8 @@ CONFIG_DIR = PROJECT_ROOT / "config"
 
 DATABASE_DIR = PROJECT_ROOT / "database"
 
+COMBINED_DATA_DIR = DATA_DIR / "combined"
+
 
 # ============================================================
 # CONFIGURATION
@@ -65,6 +67,10 @@ DATABASE_DIR.mkdir(
     exist_ok=True
 )
 
+COMBINED_DATA_DIR.mkdir(
+    parents=True,
+    exist_ok=True
+)
 
 # ============================================================
 # LOAD TICKERS

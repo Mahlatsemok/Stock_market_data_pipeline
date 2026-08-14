@@ -4,7 +4,8 @@ import pandas as pd
 
 from stock_pipeline.config import (
     load_tickers,
-    FAILED_TICKERS_FILE
+    FAILED_TICKERS_FILE,
+    COMBINED_DATA_DIR
 )
 
 from stock_pipeline.extract.yahoo_finance import (
@@ -176,6 +177,20 @@ def main():
     all_stock_data = pd.concat(
         processed_data,
         ignore_index=True
+    )
+
+    combined_file = (
+    COMBINED_DATA_DIR / "all_stocks_clean.csv"
+    )
+
+    all_stock_data.to_csv(
+        combined_file,
+        index=False
+    )
+
+    logger.info(
+        "Combined data saved to %s",
+        combined_file
     )
 
     logger.info(
