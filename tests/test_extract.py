@@ -274,3 +274,29 @@ def test_extraction_uses_configured_retry_delay(monkeypatch):
     assert result.empty
     assert calls["count"] == 3
     assert recorded_delays == [0.5, 0.5]
+
+def test_extraction_logs_success(
+    sample_yahoo_data, tmp_path, monkeypatch, caplog
+):
+    import logging
+
+    monkeypatch.setattr(yahoo_module, "RAW_DATA_DIR", tmp_path)
+    monkeypatch.setattr(
+        yahoo_module.yf,
+        "download",
+        lambda *args, **kwargs: sample_yahoo_data.copy(),
+    )
+
+    with caplog.at_level(logging.INFO, logger=yahoo_module.__name__):
+        result = yahoo_module.extract_stock_data(
+            "AAPL",
+            period="5y",
+            max_retries=2,
+            retry_delay=0,
+        )
+
+    assert not result.empty
+    assert "Starting extraction for ticker=AAPL" in caplog.text
+    assert "Extraction attempt 1/2 for ticker=AAPL" in caplog.text
+    assert "Extraction successful for ticker=AAPL" in caplog.text
+    assert "rows=2" in caplog.text

@@ -50,11 +50,22 @@ def extract_stock_data(
     period = period.strip()
 
     logger.info(
-        "Downloading data for %s...",
-        ticker
+        "Starting extraction for ticker=%s, period=%s, "
+        "max_retries=%d, retry_delay=%s",
+        ticker,
+        period,
+        max_retries,
+        retry_delay,
     )
 
     for attempt in range(1, max_retries + 1):
+
+        logger.info(
+            "Extraction attempt %d/%d for ticker=%s",
+            attempt,
+            max_retries,
+            ticker,
+        )
 
         try:
 
@@ -154,7 +165,9 @@ def extract_stock_data(
             )
 
             logger.info(
-                "Raw data saved to %s",
+                "Extraction successful for ticker=%s; rows=%d; saved_to=%s",
+                ticker,
+                len(stock_data),
                 output_file
             )
 
