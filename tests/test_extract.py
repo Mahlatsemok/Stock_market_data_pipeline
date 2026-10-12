@@ -3,6 +3,7 @@ import pandas as pd
 import pytest
 
 import stock_pipeline.extract.yahoo_finance as yahoo_module
+import stock_pipeline.bronze.ingestion as bronze_module
 
 
 @pytest.fixture
@@ -18,6 +19,13 @@ def sample_yahoo_data():
         index=pd.to_datetime(["2025-01-01", "2025-01-02"]),
     )
 
+@pytest.fixture(autouse=True)
+def disable_bronze_side_effects(monkeypatch):
+    monkeypatch.setattr(
+        yahoo_module,
+        "ingest_to_bronze",
+        lambda *args, **kwargs: None,
+    )
 
 def test_extraction_saves_downloaded_data(
     sample_yahoo_data, tmp_path, monkeypatch
@@ -336,3 +344,82 @@ def test_extraction_logs_error_after_retries_exhausted(
     assert "Failed to download AAPL" in caplog.text
     assert "Yahoo Finance unavailable" in caplog.text
     assert "attempt 2/2" in caplog.text
+
+def test_extraction_saves_bronze_snapshot(
+    sample_yahoo_data, tmp_path, monkeypatch
+):
+    raw_data_dir = tmp_path / "raw"
+    bronze_data_dir = tmp_path / "bronze"
+
+    monkeypatch.setattr(
+        yahoo_module, "RAW_DATA_DIR", raw_data_dir
+    )
+    monkeypatch.setattr(
+        bronze_module, "BRONZE_DATA_DIR", bronze_data_dir
+    )
+    monkeypatch.setattr(
+        yahoo_module.yf,
+        "download",
+        lambda *args, **kwargs: sample_yahoo_data.copy(),
+    )
+    monkeypatch.setattr(
+        yahoo_module,
+        "ingest_to_bronze",
+        bronze_module.ingest_to_bronze,
+    )
+
+    result = yahoo_module.extract_stock_data("AAPL")
+
+    assert not result.empty
+    assert (raw_data_dir / "AAPL_stock.csv").exists()
+
+    bronze_files = list(bronze_data_dir.glob("AAPL_*.csv"))
+    assert len(bronze_files) == 1
+
+    saved = pd.read_csv(bronze_files[0])
+
+    assert len(saved) == 2
+    assert saved["Ticker"].eq("AAPL").all()
+    assert saved["source_system"].eq("yahoo_finance").all()
+    assert saved["ingested_at_utc"].notna().all()
+
+
+def test_extraction_succeeds_when_bronze_ingestion_fails(
+    sample_yahoo_data, tmp_path, monkeypatch, caplog
+):
+    import logging
+
+    raw_data_dir = tmp_path / "raw"
+    monkeypatch.setattr(
+        yahoo_module, "RAW_DATA_DIR", raw_data_dir
+    )
+    monkeypatch.setattr(
+        yahoo_module.yf,
+        "download",
+        lambda *args, **kwargs: sample_yahoo_data.copy(),
+    )
+
+    def fail_bronze_ingestion(*args, **kwargs):
+        raise OSError("Bronze storage unavailable")
+
+    monkeypatch.setattr(
+        yahoo_module,
+        "ingest_to_bronze",
+        fail_bronze_ingestion,
+    )
+
+    with caplog.at_level(
+        logging.ERROR,
+        logger=yahoo_module.__name__,
+    ):
+        result = yahoo_module.extract_stock_data(
+            "AAPL",
+            max_retries=1,
+            retry_delay=0,
+        )
+
+    assert not result.empty
+    assert result["Ticker"].eq("AAPL").all()
+    assert (raw_data_dir / "AAPL_stock.csv").exists()
+    assert "Bronze ingestion failed for ticker=AAPL" in caplog.text
+    assert "Bronze storage unavailable" in caplog.text

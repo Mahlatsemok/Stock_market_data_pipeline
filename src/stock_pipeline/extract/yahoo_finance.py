@@ -6,6 +6,7 @@ import pandas as pd
 import yfinance as yf
 
 from stock_pipeline.config import RAW_DATA_DIR
+from stock_pipeline.bronze.ingestion import ingest_to_bronze
 
 
 logger = logging.getLogger(__name__)
@@ -164,11 +165,26 @@ def extract_stock_data(
                 output_file
             )
 
+            # Bronze ingestion must not invalidate a successful extraction.
+            try:
+                ingest_to_bronze(
+                    stock_data,
+                    ticker,
+                    source="yahoo_finance",
+                )
+            except Exception:
+                logger.exception(
+                    "Bronze ingestion failed for ticker=%s; "
+                    "raw data remains saved at %s",
+                    ticker,
+                    output_file,
+                )
+
             logger.info(
                 "Extraction successful for ticker=%s; rows=%d; saved_to=%s",
                 ticker,
                 len(stock_data),
-                output_file
+                output_file,
             )
 
             return stock_data
