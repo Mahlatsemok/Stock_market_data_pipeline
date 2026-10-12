@@ -1,0 +1,28 @@
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "stock-market-data-pipeline"
+version = "0.1.0"
+description = "A stock market data engineering pipeline for extraction, transformation, validation, and analytics."
+requires-python = ">=3.11"
+dependencies = [
+    "pandas",
+    "PyYAML",
+    "SQLAlchemy",
+    "yfinance",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
