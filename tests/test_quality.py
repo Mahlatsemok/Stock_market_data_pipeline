@@ -76,4 +76,67 @@ def test_negative_volume_is_rejected(valid_stock_data):
 
     with pytest.raises(ValueError, match="Invalid volume"):
         validate_stock_data(df, "AAPL")
-        
+
+
+@pytest.mark.parametrize(
+    ("column", "value", "message"),
+    [
+        ("Open", float("nan"), "Missing values"),
+        ("High", float("inf"), "Non-finite values"),
+        ("Low", float("-inf"), "Non-finite values"),
+        ("Volume", float("nan"), "Missing values"),
+        ("Volume", float("inf"), "Non-finite values"),
+    ],
+)
+def test_invalid_numeric_values_are_rejected(
+    valid_stock_data, column, value, message
+):
+    df = valid_stock_data.copy()
+    df[column] = df[column].astype(float)
+    df.loc[0, column] = value
+
+    with pytest.raises(ValueError, match=message):
+        validate_stock_data(df, "AAPL")
+
+
+@pytest.mark.parametrize(
+    ("column", "value"),
+    [
+        ("Open", -1),
+        ("High", 0),
+        ("Low", -1),
+        ("Close", 0),
+    ],
+)
+def test_non_positive_prices_are_rejected(
+    valid_stock_data, column, value
+):
+    df = valid_stock_data.copy()
+    df.loc[0, column] = value
+
+    with pytest.raises(ValueError, match="Invalid price"):
+        validate_stock_data(df, "AAPL")
+
+
+def test_high_below_low_is_rejected(valid_stock_data):
+    df = valid_stock_data.copy()
+    df.loc[0, "High"] = 98
+
+    with pytest.raises(ValueError, match="High price cannot be below Low"):
+        validate_stock_data(df, "AAPL")
+
+
+def test_mismatched_ticker_is_rejected(valid_stock_data):
+    df = valid_stock_data.copy()
+    df.loc[0, "Ticker"] = "MSFT"
+
+    with pytest.raises(ValueError, match="mismatched ticker"):
+        validate_stock_data(df, "AAPL")
+
+
+def test_missing_date_is_rejected(valid_stock_data):
+    df = valid_stock_data.copy()
+    df.loc[0, "Date"] = pd.NaT
+
+    with pytest.raises(ValueError, match="Date cannot be missing"):
+        validate_stock_data(df, "AAPL")

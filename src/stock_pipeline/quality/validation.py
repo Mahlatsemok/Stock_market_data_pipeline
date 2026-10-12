@@ -1,3 +1,5 @@
+
+import numpy as np
 import pandas as pd
 
 
@@ -8,18 +10,19 @@ REQUIRED_COLUMNS = [
     "High",
     "Low",
     "Close",
-    "Volume"
+    "Volume",
 ]
+
+PRICE_COLUMNS = ["Open", "High", "Low", "Close"]
+NUMERIC_COLUMNS = PRICE_COLUMNS + ["Volume"]
 
 
 def validate_stock_data(df: pd.DataFrame, ticker: str) -> bool:
-    """
-    Validate stock data before loading it.
-    """
+    """Validate stock market data before downstream processing."""
 
-    print(f"Validating data for {ticker}...")
+    if not isinstance(df, pd.DataFrame):
+        raise ValueError(f"{ticker}: Input must be a pandas DataFrame")
 
-    # Check required columns
     missing_columns = [
         column
         for column in REQUIRED_COLUMNS
@@ -31,34 +34,69 @@ def validate_stock_data(df: pd.DataFrame, ticker: str) -> bool:
             f"{ticker}: Missing columns: {missing_columns}"
         )
 
-    # Check dataframe isn't empty
     if df.empty:
+        raise ValueError(f"{ticker}: DataFrame is empty")
+
+    if df[["Ticker", "Date"]].isna().any().any():
+        raise ValueError(f"{ticker}: Ticker and Date cannot be missing")
+
+    if not df["Ticker"].eq(ticker).all():
         raise ValueError(
-            f"{ticker}: DataFrame is empty"
+            f"{ticker}: Data contains mismatched ticker values"
         )
 
-    # Check duplicate ticker/date combinations
-    duplicates = df.duplicated(
-        subset=["Ticker", "Date"]
-    ).sum()
+    if df["Date"].isna().any():
+        raise ValueError(f"{ticker}: Invalid dates detected")
 
-    if duplicates > 0:
+    if df.duplicated(subset=["Ticker", "Date"]).any():
+        duplicates = int(
+            df.duplicated(subset=["Ticker", "Date"]).sum()
+        )
         raise ValueError(
             f"{ticker}: Found {duplicates} duplicate records"
         )
 
-    # Check prices are positive
-    if (df["Close"] <= 0).any():
-        raise ValueError(
-            f"{ticker}: Invalid closing price detected"
-        )
+    for column in NUMERIC_COLUMNS:
+        try:
+            values = pd.to_numeric(df[column], errors="raise")
+        except (ValueError, TypeError) as error:
+            raise ValueError(
+                f"{ticker}: Non-numeric values detected in {column}"
+            ) from error
 
-    # Check volume
+        if values.isna().any():
+            raise ValueError(
+                f"{ticker}: Missing values detected in {column}"
+            )
+
+        if not np.isfinite(values.to_numpy(dtype=float)).all():
+            raise ValueError(
+                f"{ticker}: Non-finite values detected in {column}"
+            )
+
+    if (df[PRICE_COLUMNS] <= 0).any().any():
+        raise ValueError(f"{ticker}: Invalid price detected (closing price and all other prices must be positive)")
+
     if (df["Volume"] < 0).any():
+        raise ValueError(f"{ticker}: Invalid volume detected")
+
+    if (df["High"] < df["Low"]).any():
+        raise ValueError(f"{ticker}: High price cannot be below Low")
+
+    if (
+        (df["High"] < df["Open"])
+        | (df["High"] < df["Close"])
+    ).any():
         raise ValueError(
-            f"{ticker}: Invalid volume detected"
+            f"{ticker}: High price cannot be below Open or Close"
         )
 
-    print(f"Validation passed for {ticker}")
+    if (
+        (df["Low"] > df["Open"])
+        | (df["Low"] > df["Close"])
+    ).any():
+        raise ValueError(
+            f"{ticker}: Low price cannot be above Open or Close"
+        )
 
     return True
