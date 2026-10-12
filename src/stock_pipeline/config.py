@@ -28,6 +28,7 @@ DATABASE_DIR = PROJECT_ROOT / "database"
 
 COMBINED_DATA_DIR = DATA_DIR / "combined"
 
+BRONZE_DATA_DIR = DATA_DIR / "bronze"
 
 # ============================================================
 # CONFIGURATION
@@ -89,3 +90,12 @@ def load_tickers():
         config = yaml.safe_load(file)
 
     return config["stocks"]
+
+# ============================================================
+# BRONZE
+# ============================================================
+
+BRONZE_DATA_DIR.mkdir(
+    parents=True,
+    exist_ok=True,
+)

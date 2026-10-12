@@ -31,3 +31,6 @@ Thumbs.db
 
 # Logs
 *.log
+
+# Generated Bronze ingestion snapshots
+data/bronze/
