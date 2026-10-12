@@ -300,3 +300,39 @@ def test_extraction_logs_success(
     assert "Extraction attempt 1/2 for ticker=AAPL" in caplog.text
     assert "Extraction successful for ticker=AAPL" in caplog.text
     assert "rows=2" in caplog.text
+
+def test_extraction_logs_error_after_retries_exhausted(
+    tmp_path, monkeypatch, caplog
+):
+    import logging
+
+    monkeypatch.setattr(yahoo_module, "RAW_DATA_DIR", tmp_path)
+
+    def failed_download(*args, **kwargs):
+        raise ConnectionError("Yahoo Finance unavailable")
+
+    monkeypatch.setattr(
+        yahoo_module.yf,
+        "download",
+        failed_download,
+    )
+    monkeypatch.setattr(
+        yahoo_module.time,
+        "sleep",
+        lambda *_: None,
+    )
+
+    with caplog.at_level(
+        logging.ERROR,
+        logger=yahoo_module.__name__,
+    ):
+        result = yahoo_module.extract_stock_data(
+            "AAPL",
+            max_retries=2,
+            retry_delay=0,
+        )
+
+    assert result.empty
+    assert "Failed to download AAPL" in caplog.text
+    assert "Yahoo Finance unavailable" in caplog.text
+    assert "attempt 2/2" in caplog.text
