@@ -21,6 +21,22 @@ def extract_stock_data(
     Retries failed requests before returning an empty DataFrame.
     """
 
+    if not isinstance(ticker, str) or not ticker.strip():
+        raise ValueError("ticker must be a non-empty string")
+
+    if not isinstance(period, str) or not period.strip():
+        raise ValueError("period must be a non-empty string")
+
+    if (
+        isinstance(max_retries, bool)
+        or not isinstance(max_retries, int)
+        or max_retries < 1
+    ):
+        raise ValueError("max_retries must be a positive integer")
+
+    ticker = ticker.strip()
+    period = period.strip()
+
     logger.info(
         "Downloading data for %s...",
         ticker
@@ -34,17 +50,34 @@ def extract_stock_data(
                 ticker,
                 period=period,
                 auto_adjust=False,
-                progress=True
+                progress=False
             )
 
-            if stock_data.empty:
+            if stock_data is None or not isinstance(
+                stock_data, pd.DataFrame
+            ):
 
+                logger.warning(
+                    "Unexpected response for %s "
+                    "(attempt %d/%d)",
+                    ticker,
+                    attempt,
+                    max_retries
+                )
+
+                if attempt < max_retries:
+                    time.sleep(2)
+                    continue
+
+                return pd.DataFrame()
+
+            if stock_data.empty:
                 logger.warning(
                     "No data returned for %s "
                     "(attempt %d/%d)",
                     ticker,
                     attempt,
-                    max_retries
+                    max_retries,
                 )
 
                 if attempt < max_retries:
@@ -63,8 +96,40 @@ def extract_stock_data(
                     .get_level_values(0)
                 )
 
+            # Validate the minimum expected market-data schema
+            required_columns = {
+                "Open",
+                "High",
+                "Low",
+                "Close",
+                "Volume",
+            }
+
+            missing_columns = (
+                required_columns - set(stock_data.columns)
+            )
+
+            if missing_columns:
+                logger.warning(
+                    "Missing expected columns for %s "
+                    "(attempt %d/%d): %s",
+                    ticker,
+                    attempt,
+                    max_retries,
+                    sorted(missing_columns),
+                )
+
+                if attempt < max_retries:
+                    time.sleep(2)
+                    continue
+
+                return pd.DataFrame()
+
             # Add ticker
             stock_data["Ticker"] = ticker
+
+            # Ensure the raw-data directory exists
+            RAW_DATA_DIR.mkdir(parents=True, exist_ok=True)
 
             # Save raw data
             output_file = (
