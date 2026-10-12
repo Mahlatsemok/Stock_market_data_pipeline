@@ -124,4 +124,29 @@ def test_transform_handles_multiindex_columns(tmp_path, monkeypatch):
     assert "Ticker" in result.columns
     assert result["Ticker"].eq("AAPL").all()
     assert len(result) == 2
-    
+
+
+def test_transform_rejects_invalid_prices_without_saving(
+    tmp_path, monkeypatch
+):
+    import stock_pipeline.transform.stocks as stocks_module
+
+    monkeypatch.setattr(
+        stocks_module,
+        "PROCESSED_DATA_DIR",
+        tmp_path,
+    )
+
+    df = pd.DataFrame({
+        "Date": pd.to_datetime(["2025-01-01", "2025-01-02"]),
+        "Open": [100.0, 101.0],
+        "High": [102.0, 103.0],
+        "Low": [99.0, 100.0],
+        "Close": [101.0, -1.0],
+        "Volume": [1000, 1100],
+    })
+
+    with pytest.raises(ValueError, match="Invalid price"):
+        transform_stock_data(df, "AAPL")
+
+    assert not (tmp_path / "AAPL_stock_clean.csv").exists()
