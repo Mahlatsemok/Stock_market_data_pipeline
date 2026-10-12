@@ -132,7 +132,8 @@ def test_transform_handles_multiindex_columns(tmp_path, monkeypatch):
     assert len(result) == 2
 
 
-def test_transform_rejects_invalid_prices_without_saving(
+
+def test_transform_quarantines_invalid_prices_and_saves_valid_rows(
     tmp_path, monkeypatch
 ):
     import stock_pipeline.transform.stocks as stocks_module
@@ -140,7 +141,12 @@ def test_transform_rejects_invalid_prices_without_saving(
     monkeypatch.setattr(
         stocks_module,
         "PROCESSED_DATA_DIR",
-        tmp_path,
+        tmp_path / "processed",
+    )
+    monkeypatch.setattr(
+        stocks_module,
+        "QUARANTINE_DIR",
+        tmp_path / "quarantine",
     )
 
     df = pd.DataFrame({
@@ -152,10 +158,29 @@ def test_transform_rejects_invalid_prices_without_saving(
         "Volume": [1000, 1100],
     })
 
-    with pytest.raises(ValueError, match="Invalid price"):
-        transform_stock_data(df, "AAPL")
+    result = stocks_module.transform_stock_data(df, "AAPL")
 
-    assert not (tmp_path / "AAPL_stock_clean.csv").exists()
+    # The valid record should remain in the processed dataset.
+    assert len(result) == 1
+    assert result.iloc[0]["Date"] == pd.Timestamp("2025-01-01")
+    assert result.iloc[0]["Close"] == 101.0
+
+    # The invalid record should be recorded in quarantine.
+    quarantine_file = tmp_path / "quarantine" / "AAPL_quarantine.csv"
+    assert quarantine_file.exists()
+
+    quarantined = pd.read_csv(quarantine_file)
+    assert len(quarantined) == 1
+    assert quarantined.iloc[0]["Close"] == -1.0
+    assert quarantined.iloc[0]["quarantine_reason"] == "invalid_price"
+
+    # The processed CSV should contain only the valid record.
+    processed_file = tmp_path / "processed" / "AAPL_stock_clean.csv"
+    assert processed_file.exists()
+
+    processed = pd.read_csv(processed_file)
+    assert len(processed) == 1
+    assert processed.iloc[0]["Close"] == 101.0
 
 
 def test_transform_quarantines_discarded_rows(
@@ -345,3 +370,85 @@ def test_transform_appends_to_existing_quarantine_history(
         "duplicate_ticker_date"
     ).all()
     assert quarantined["quarantined_at_utc"].notna().all()
+
+
+@pytest.mark.parametrize(
+    ("invalid_values", "expected_reason"),
+    [
+        (
+            {"Close": "not-a-number"},
+            "non_numeric_or_non_finite_value",
+        ),
+        (
+            {"Close": float("inf")},
+            "non_numeric_or_non_finite_value",
+        ),
+        (
+            {"Open": 0.0},
+            "invalid_price",
+        ),
+        (
+            {"Volume": -1},
+            "invalid_volume",
+        ),
+        (
+            {"High": 98.0},
+            "inconsistent_ohlc_values",
+        ),
+    ],
+)
+def test_transform_quarantines_invalid_quality_values(
+    invalid_values,
+    expected_reason,
+    tmp_path,
+    monkeypatch,
+):
+    import stock_pipeline.transform.stocks as stocks_module
+
+    processed_dir = tmp_path / "processed"
+    quarantine_dir = tmp_path / "quarantine"
+
+    monkeypatch.setattr(
+        stocks_module,
+        "PROCESSED_DATA_DIR",
+        processed_dir,
+    )
+    monkeypatch.setattr(
+        stocks_module,
+        "QUARANTINE_DIR",
+        quarantine_dir,
+    )
+
+    valid_row = {
+        "Date": pd.Timestamp("2025-01-01"),
+        "Open": 100.0,
+        "High": 102.0,
+        "Low": 99.0,
+        "Close": 101.0,
+        "Volume": 1000,
+    }
+    invalid_row = {
+        **valid_row,
+        "Date": pd.Timestamp("2025-01-02"),
+        **invalid_values,
+    }
+
+    df = pd.DataFrame([valid_row, invalid_row])
+
+    result = stocks_module.transform_stock_data(df, "AAPL")
+
+    assert len(result) == 1
+    assert result.iloc[0]["Date"] == pd.Timestamp("2025-01-01")
+
+    quarantine_file = quarantine_dir / "AAPL_quarantine.csv"
+    assert quarantine_file.exists()
+
+    quarantined = pd.read_csv(quarantine_file)
+
+    assert len(quarantined) == 1
+    assert quarantined.iloc[0]["quarantine_reason"] == expected_reason
+    assert pd.to_datetime(quarantined.iloc[0]["Date"]) == pd.Timestamp(
+        "2025-01-02"
+    )
+
+    assert (processed_dir / "AAPL_stock_clean.csv").exists()
