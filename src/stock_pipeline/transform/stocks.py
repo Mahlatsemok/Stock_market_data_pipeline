@@ -1,4 +1,3 @@
-
 from datetime import datetime, timezone
 
 import pandas as pd
@@ -84,9 +83,8 @@ def transform_stock_data(
     # Convert dates before identifying invalid rows.
     df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
 
-    # Identify rows that cannot continue through the transformation.
+    # Identify invalid records using row-aligned Boolean masks.
     invalid_date = df["Date"].isna()
-
     missing_values = df[REQUIRED_VALUE_COLUMNS].isna().any(axis=1)
 
     duplicate = df.duplicated(
@@ -94,26 +92,49 @@ def transform_stock_data(
         keep="first",
     )
 
-    rejected = invalid_date | missing_values | duplicate
+    # Convert masks to positional arrays. This avoids ambiguous
+    # lookups when the incoming DataFrame has duplicate index labels.
+    invalid_date_positions = invalid_date.to_numpy()
+    missing_value_positions = missing_values.to_numpy()
+    duplicate_positions = duplicate.to_numpy()
 
-    if rejected.any():
-        quarantined = df.loc[rejected].copy()
+    rejected_positions = (
+        invalid_date_positions
+        | missing_value_positions
+        | duplicate_positions
+    )
+
+    if rejected_positions.any():
+        rejected_row_positions = [
+            position
+            for position, is_rejected in enumerate(rejected_positions)
+            if is_rejected
+        ]
+
+        quarantined = df.iloc[rejected_row_positions].copy()
 
         quarantined["quarantine_reason"] = [
             (
                 "invalid_date"
-                if invalid_date.loc[index]
+                if invalid_date_positions[position]
                 else "missing_required_value"
-                if missing_values.loc[index]
+                if missing_value_positions[position]
                 else "duplicate_ticker_date"
             )
-            for index in quarantined.index
+            for position in rejected_row_positions
         ]
 
         _save_quarantined_rows(quarantined, ticker)
 
-    # Keep only records that passed these cleaning checks.
-    df = df.loc[~rejected].copy()
+    # Keep only records that passed the cleaning checks.
+    df = df.iloc[~rejected_positions].copy()
+
+    if df.empty:
+        rejected_count = int(rejected_positions.sum())
+        raise ValueError(
+            f"{ticker}: No valid stock records remain after quarantine; "
+            f"{rejected_count} rows were rejected"
+        )
 
     # Sort chronologically.
     df.sort_values(

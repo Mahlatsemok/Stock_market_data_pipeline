@@ -204,3 +204,144 @@ def test_transform_quarantines_discarded_rows(
     }
     assert "quarantined_at_utc" in quarantined.columns
     assert (processed_dir / "AAPL_stock_clean.csv").exists()
+
+def test_transform_handles_duplicate_dataframe_index_labels(
+    tmp_path, monkeypatch
+):
+    import stock_pipeline.transform.stocks as stocks_module
+
+    processed_dir = tmp_path / "processed"
+    quarantine_dir = tmp_path / "quarantine"
+
+    monkeypatch.setattr(
+        stocks_module,
+        "PROCESSED_DATA_DIR",
+        processed_dir,
+    )
+    monkeypatch.setattr(
+        stocks_module,
+        "QUARANTINE_DIR",
+        quarantine_dir,
+    )
+
+    df = pd.DataFrame(
+        {
+            "Date": pd.to_datetime([
+                "2025-01-01",
+                "2025-01-02",
+                "2025-01-02",
+                "2025-01-04",
+            ]),
+            "Open": [100.0, 101.0, 101.0, None],
+            "High": [102.0, 103.0, 103.0, 106.0],
+            "Low": [99.0, 100.0, 100.0, 104.0],
+            "Close": [101.0, 102.0, 102.0, 105.0],
+            "Volume": [1000, 1100, 1100, 1300],
+        },
+        index=[0, 0, 1, 1],
+    )
+
+    result = transform_stock_data(df, "AAPL")
+
+    quarantined = pd.read_csv(
+        quarantine_dir / "AAPL_quarantine.csv"
+    )
+
+    assert len(result) == 2
+    assert len(quarantined) == 2
+    assert set(quarantined["quarantine_reason"]) == {
+        "duplicate_ticker_date",
+        "missing_required_value",
+    }
+
+
+def test_transform_raises_clear_error_when_all_rows_are_quarantined(
+    tmp_path, monkeypatch
+):
+    import stock_pipeline.transform.stocks as stocks_module
+
+    processed_dir = tmp_path / "processed"
+    quarantine_dir = tmp_path / "quarantine"
+
+    monkeypatch.setattr(
+        stocks_module,
+        "PROCESSED_DATA_DIR",
+        processed_dir,
+    )
+    monkeypatch.setattr(
+        stocks_module,
+        "QUARANTINE_DIR",
+        quarantine_dir,
+    )
+
+    df = pd.DataFrame({
+        "Date": [None, None],
+        "Open": [100.0, 101.0],
+        "High": [102.0, 103.0],
+        "Low": [99.0, 100.0],
+        "Close": [101.0, 102.0],
+        "Volume": [1000, 1100],
+    })
+
+    with pytest.raises(
+        ValueError,
+        match="No valid stock records remain after quarantine; "
+              "2 rows were rejected",
+    ):
+        transform_stock_data(df, "AAPL")
+
+    quarantined = pd.read_csv(
+        quarantine_dir / "AAPL_quarantine.csv"
+    )
+
+    assert len(quarantined) == 2
+    assert quarantined["quarantine_reason"].eq(
+        "invalid_date"
+    ).all()
+    assert not (processed_dir / "AAPL_stock_clean.csv").exists()
+
+def test_transform_appends_to_existing_quarantine_history(
+    tmp_path, monkeypatch
+):
+    import stock_pipeline.transform.stocks as stocks_module
+
+    processed_dir = tmp_path / "processed"
+    quarantine_dir = tmp_path / "quarantine"
+
+    monkeypatch.setattr(
+        stocks_module,
+        "PROCESSED_DATA_DIR",
+        processed_dir,
+    )
+    monkeypatch.setattr(
+        stocks_module,
+        "QUARANTINE_DIR",
+        quarantine_dir,
+    )
+
+    df = pd.DataFrame({
+        "Date": pd.to_datetime([
+            "2025-01-01",
+            "2025-01-02",
+            "2025-01-02",
+        ]),
+        "Open": [100.0, 101.0, 101.0],
+        "High": [102.0, 103.0, 103.0],
+        "Low": [99.0, 100.0, 100.0],
+        "Close": [101.0, 102.0, 102.0],
+        "Volume": [1000, 1100, 1100],
+    })
+
+    transform_stock_data(df, "AAPL")
+    transform_stock_data(df, "AAPL")
+
+    quarantined = pd.read_csv(
+        quarantine_dir / "AAPL_quarantine.csv"
+    )
+
+    # Each run contributes one rejected duplicate record.
+    assert len(quarantined) == 2
+    assert quarantined["quarantine_reason"].eq(
+        "duplicate_ticker_date"
+    ).all()
+    assert quarantined["quarantined_at_utc"].notna().all()
