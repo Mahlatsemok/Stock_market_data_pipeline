@@ -1,4 +1,5 @@
 import logging
+import math
 import time
 
 import pandas as pd
@@ -13,7 +14,8 @@ logger = logging.getLogger(__name__)
 def extract_stock_data(
     ticker: str,
     period: str = "10y",
-    max_retries: int = 3
+    max_retries: int = 3,
+    retry_delay: float = 2.0,
 ) -> pd.DataFrame:
     """
     Extract historical stock data from Yahoo Finance.
@@ -33,6 +35,16 @@ def extract_stock_data(
         or max_retries < 1
     ):
         raise ValueError("max_retries must be a positive integer")
+
+    if (
+        isinstance(retry_delay, bool)
+        or not isinstance(retry_delay, (int, float))
+        or not math.isfinite(retry_delay)
+        or retry_delay < 0
+    ):
+        raise ValueError(
+            "retry_delay must be a finite, non-negative number"
+        )
 
     ticker = ticker.strip()
     period = period.strip()
@@ -66,7 +78,7 @@ def extract_stock_data(
                 )
 
                 if attempt < max_retries:
-                    time.sleep(2)
+                    time.sleep(retry_delay)
                     continue
 
                 return pd.DataFrame()
@@ -81,7 +93,7 @@ def extract_stock_data(
                 )
 
                 if attempt < max_retries:
-                    time.sleep(2)
+                    time.sleep(retry_delay)
                     continue
 
                 return pd.DataFrame()
@@ -120,7 +132,7 @@ def extract_stock_data(
                 )
 
                 if attempt < max_retries:
-                    time.sleep(2)
+                    time.sleep(retry_delay)
                     continue
 
                 return pd.DataFrame()
@@ -160,6 +172,6 @@ def extract_stock_data(
             )
 
             if attempt < max_retries:
-                time.sleep(2)
+                time.sleep(retry_delay)
 
     return pd.DataFrame()

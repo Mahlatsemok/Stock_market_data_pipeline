@@ -230,3 +230,47 @@ def test_extraction_retries_after_empty_dataframe(
     assert result["Ticker"].eq("AAPL").all()
     assert calls["count"] == 2
     assert (tmp_path / "AAPL_stock.csv").exists()
+
+@pytest.mark.parametrize(
+    "retry_delay",
+    [-1, -0.5, float("inf"), float("-inf"), float("nan"), True, "2"],
+)
+def test_extraction_rejects_invalid_retry_delay(retry_delay):
+    with pytest.raises(
+        ValueError,
+        match="retry_delay must be a finite, non-negative number",
+    ):
+        yahoo_module.extract_stock_data(
+            "AAPL",
+            retry_delay=retry_delay,
+        )
+
+
+def test_extraction_uses_configured_retry_delay(monkeypatch):
+    calls = {"count": 0}
+    recorded_delays = []
+
+    def failed_download(*args, **kwargs):
+        calls["count"] += 1
+        raise ConnectionError("Temporary network failure")
+
+    monkeypatch.setattr(
+        yahoo_module.yf,
+        "download",
+        failed_download,
+    )
+    monkeypatch.setattr(
+        yahoo_module.time,
+        "sleep",
+        recorded_delays.append,
+    )
+
+    result = yahoo_module.extract_stock_data(
+        "AAPL",
+        max_retries=3,
+        retry_delay=0.5,
+    )
+
+    assert result.empty
+    assert calls["count"] == 3
+    assert recorded_delays == [0.5, 0.5]
