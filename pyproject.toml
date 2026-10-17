@@ -9,7 +9,7 @@ version = "0.1.0"
 description = "A stock market data engineering pipeline for extraction, transformation, validation, and analytics."
 requires-python = ">=3.11"
 dependencies = [
-    "pandas",
+    "pandas>=2.2,<3.0",
     "PyYAML",
     "SQLAlchemy",
     "yfinance",
@@ -26,3 +26,5 @@ where = ["src"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
+pythonpath = ["src", "spark"]
+addopts = "-p no:cacheprovider"
