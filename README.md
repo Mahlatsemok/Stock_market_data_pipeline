@@ -4,7 +4,7 @@ A Python project for collecting daily stock prices, validating and transforming 
 
 ## Current project status
 
-The repository contains a working Python extraction and transformation pipeline, Bronze CSV ingestion, Spark Silver processing, PostgreSQL loading code, SQL, tests, and starter files for dbt, Streamlit, Airflow, and Docker. Several later-stage components are still being built. See the implementation roadmap below for the intended order.
+The repository contains a working Python extraction and transformation pipeline, Bronze CSV ingestion, Spark Silver and Gold processing, a PostgreSQL warehouse load, SQL analysis queries, tests, and starter files for dbt, Streamlit, Airflow, and Docker. Several later-stage components are still being built. See the implementation roadmap below for the intended order.
 
 ## Requirements
 
@@ -53,6 +53,31 @@ python spark/run_pipeline.py
 The job reads Bronze CSV snapshots from `data/bronze/`, writes validated and deduplicated Silver Parquet data to `data/silver/`, and writes two Gold Parquet datasets under `data/gold/`: `daily_performance/` contains daily returns, five- and twenty-day moving averages, and calendar fields; `ticker_summary/` contains one aggregated performance row per ticker. Use `--bronze-dir`, `--silver-dir`, or `--gold-dir` to override the paths.
 
 On Windows, local Spark file writes also require Hadoop's `winutils.exe`. Install a Hadoop Windows utilities build, then set `HADOOP_HOME` to the directory containing its `bin/winutils.exe`; Apache's [Windows troubleshooting guide](https://cwiki.apache.org/confluence/display/HADOOP2/WindowsProblems) describes this requirement.
+
+## Load Gold data into PostgreSQL
+
+Install and start PostgreSQL, create a database and user for the project, then install the PostgreSQL driver:
+
+```powershell
+python -m pip install -e ".[postgres]"
+```
+
+Set `DATABASE_URL` in the current PowerShell session. Replace the example user, password, host, and database with your local PostgreSQL settings; do not commit real credentials:
+
+```powershell
+$env:DATABASE_URL = "postgresql+psycopg://stock_user:your_password@localhost:5432/stock_market"
+```
+
+Run the Spark job first if the Gold Parquet datasets do not already exist, then load them:
+
+```powershell
+python spark/run_pipeline.py
+python spark/load_postgres.py
+```
+
+The loader creates the tables and indexes from `sql/schema.sql` when needed. It loads `data/gold/daily_performance/` into `daily_performance` and `data/gold/ticker_summary/` into `ticker_summary`. Re-running the load updates matching ticker/date keys instead of inserting duplicate rows. `DATABASE_URL` is read from the process environment; `.env.example` documents its expected format.
+
+Run the sample warehouse queries in `sql/queries.sql` after the load.
 
 ## Run tests
 
