@@ -1,5 +1,6 @@
 import logging
 import math
+import re
 import time
 
 import pandas as pd
@@ -47,7 +48,10 @@ def extract_stock_data(
             "retry_delay must be a finite, non-negative number"
         )
 
-    ticker = ticker.strip()
+    ticker = ticker.strip().upper()
+    if not re.fullmatch(r"[A-Z0-9.^_-]+", ticker):
+        raise ValueError("ticker contains unsupported characters")
+
     period = period.strip()
 
     logger.info(
@@ -74,7 +78,9 @@ def extract_stock_data(
                 ticker,
                 period=period,
                 auto_adjust=False,
-                progress=False
+                progress=False,
+                threads=False,
+                timeout=30,
             )
 
             if stock_data is None or not isinstance(
