@@ -1,5 +1,6 @@
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 import os
+from pathlib import Path
 import sys
 
 import pytest
@@ -12,7 +13,12 @@ from pyspark.sql.types import (
     StructType,
 )
 
-from stock_processing import transform_silver
+from stock_processing import (
+    run_gold,
+    transform_gold,
+    transform_gold_summary,
+    transform_silver,
+)
 
 
 @pytest.fixture(scope="module")
@@ -122,3 +128,99 @@ def test_silver_returns_empty_dataframe_when_all_rows_are_invalid(
     df = spark.createDataFrame([tuple(invalid)], schema=bronze_schema)
 
     assert transform_silver(df).count() == 0
+
+
+def test_gold_calculates_returns_rolling_averages_and_ticker_summary(
+    spark, bronze_schema
+):
+    start_date = date(2025, 1, 1)
+    rows = []
+    for index in range(20):
+        close = 100.0 + index
+        rows.append(
+            (
+                (start_date + timedelta(days=index)).isoformat(),
+                close,
+                close,
+                close + 2.0,
+                close - 2.0,
+                close,
+                1000 + index,
+                "AAPL",
+                "2025-01-21T10:00:00+00:00",
+                "yahoo_finance",
+            )
+        )
+
+    bronze_df = spark.createDataFrame(rows, schema=bronze_schema)
+    silver_df = transform_silver(bronze_df)
+    daily_gold_df = transform_gold(silver_df).orderBy("Date")
+    daily_rows = daily_gold_df.collect()
+
+    assert len(daily_rows) == 20
+    assert daily_rows[0]["Daily_Return"] is None
+    assert daily_rows[1]["Daily_Return"] == pytest.approx(1.0)
+    assert all(row["MA5"] is None for row in daily_rows[:4])
+    assert daily_rows[4]["MA5"] == pytest.approx(102.0)
+    assert all(row["MA20"] is None for row in daily_rows[:19])
+    assert daily_rows[19]["MA20"] == pytest.approx(109.5)
+    assert daily_rows[19]["Year"] == 2025
+    assert daily_rows[19]["Month"] == 1
+
+    summary_rows = transform_gold_summary(daily_gold_df).collect()
+    assert len(summary_rows) == 1
+    summary = summary_rows[0]
+    assert summary["Ticker"] == "AAPL"
+    assert summary["total_records"] == 20
+    assert summary["latest_date"] == date(2025, 1, 20)
+    assert summary["latest_close"] == pytest.approx(119.0)
+    assert summary["latest_volume"] == 1019
+
+
+@pytest.mark.skipif(
+    sys.platform == "win32"
+    and not (
+        os.environ.get("HADOOP_HOME")
+        and (
+            Path(os.environ["HADOOP_HOME"])
+            / "bin"
+            / "winutils.exe"
+        ).is_file()
+    ),
+    reason="Local Parquet writes on Windows require Hadoop winutils.exe",
+)
+def test_run_gold_persists_both_gold_datasets(
+    spark, bronze_schema, tmp_path
+):
+    rows = [
+        (
+            "2025-01-01", 99.0, 100.0, 102.0, 98.0, 99.0,
+            1000, "AAPL", "2025-01-02T10:00:00+00:00", "yahoo_finance",
+        ),
+        (
+            "2025-01-02", 100.0, 101.0, 103.0, 99.0, 100.0,
+            1100, "AAPL", "2025-01-03T10:00:00+00:00", "yahoo_finance",
+        ),
+    ]
+    silver_dir = tmp_path / "silver"
+    gold_dir = tmp_path / "gold"
+
+    silver_df = transform_silver(
+        spark.createDataFrame(rows, schema=bronze_schema)
+    )
+    silver_df.write.mode("overwrite").parquet(str(silver_dir))
+
+    daily_gold_df, summary_df = run_gold(
+        spark, silver_dir, gold_dir
+    )
+
+    assert daily_gold_df.count() == 2
+    assert summary_df.count() == 1
+    assert (
+        spark.read.parquet(str(gold_dir / "daily_performance")).count()
+        == 2
+    )
+    assert (
+        spark.read.parquet(str(gold_dir / "ticker_summary")).count()
+        == 1
+    )
