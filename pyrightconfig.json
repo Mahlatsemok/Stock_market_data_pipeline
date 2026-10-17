@@ -1,0 +1,4 @@
+{
+  "include": ["src", "spark", "tests"],
+  "extraPaths": ["src", "spark"]
+}
