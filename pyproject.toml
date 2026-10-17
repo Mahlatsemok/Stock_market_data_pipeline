@@ -22,6 +22,9 @@ dev = [
 spark = [
     "pyspark>=4.2,<5",
 ]
+postgres = [
+    "psycopg[binary]>=3.2,<4",
+]
 
 [tool.setuptools.packages.find]
 where = ["src"]
