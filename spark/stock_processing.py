@@ -167,6 +167,120 @@ def write_silver(silver_df: DataFrame, output_dir: str | Path) -> None:
     )
 
 
+def transform_gold(silver_df: DataFrame) -> DataFrame:
+    """Add daily returns and trailing five- and twenty-day averages."""
+    ordered_days = Window.partitionBy("Ticker").orderBy("Date")
+    five_days = ordered_days.rowsBetween(-4, 0)
+    twenty_days = ordered_days.rowsBetween(-19, 0)
+
+    previous_close = F.lag("Close").over(ordered_days)
+
+    return (
+        silver_df
+        .withColumn(
+            "Daily_Return",
+            F.when(
+                previous_close.isNotNull(),
+                (F.col("Close") / previous_close - F.lit(1.0)) * 100.0,
+            ),
+        )
+        .withColumn(
+            "MA5",
+            F.when(
+                F.count("Close").over(five_days) == 5,
+                F.avg("Close").over(five_days),
+            ),
+        )
+        .withColumn(
+            "MA20",
+            F.when(
+                F.count("Close").over(twenty_days) == 20,
+                F.avg("Close").over(twenty_days),
+            ),
+        )
+        .withColumn("Year", F.year("Date"))
+        .withColumn("Month", F.month("Date"))
+    )
+
+
+def transform_gold_summary(daily_gold_df: DataFrame) -> DataFrame:
+    """Aggregate daily Gold rows into one performance summary per ticker."""
+    aggregates = daily_gold_df.groupBy("Ticker").agg(
+        F.count("*").alias("total_records"),
+        F.min("Date").alias("first_date"),
+        F.max("Date").alias("last_date"),
+        F.max("Close").alias("highest_close"),
+        F.min("Close").alias("lowest_close"),
+        F.avg("Close").alias("average_close"),
+        F.avg("Volume").alias("average_volume"),
+        F.max("Daily_Return").alias("best_daily_return"),
+        F.min("Daily_Return").alias("worst_daily_return"),
+        F.avg("Daily_Return").alias("average_daily_return"),
+        F.stddev_samp("Daily_Return").alias("volatility"),
+    )
+
+    latest_record = Window.partitionBy("Ticker").orderBy(
+        F.col("Date").desc()
+    )
+    latest = (
+        daily_gold_df
+        .withColumn("_latest_rank", F.row_number().over(latest_record))
+        .filter(F.col("_latest_rank") == 1)
+        .select(
+            "Ticker",
+            F.col("Date").alias("latest_date"),
+            F.col("Close").alias("latest_close"),
+            F.col("Volume").alias("latest_volume"),
+        )
+    )
+
+    return aggregates.join(latest, on="Ticker", how="inner").select(
+        "Ticker",
+        "total_records",
+        "first_date",
+        "last_date",
+        "latest_date",
+        "latest_close",
+        "latest_volume",
+        "highest_close",
+        "lowest_close",
+        "average_close",
+        "average_volume",
+        "best_daily_return",
+        "worst_daily_return",
+        "average_daily_return",
+        "volatility",
+    )
+
+
+def write_gold(
+    daily_gold_df: DataFrame,
+    ticker_summary_df: DataFrame,
+    output_dir: str | Path,
+) -> None:
+    """Write daily performance and per-ticker summary Gold datasets."""
+    gold_path = Path(output_dir)
+    daily_gold_df.write.mode("overwrite").parquet(
+        str(gold_path / "daily_performance")
+    )
+    ticker_summary_df.write.mode("overwrite").parquet(
+        str(gold_path / "ticker_summary")
+    )
+
+
+def run_gold(
+    spark: SparkSession,
+    silver_dir: str | Path,
+    output_dir: str | Path,
+) -> tuple[DataFrame, DataFrame]:
+    """Build and persist Gold datasets from a saved Silver Parquet dataset."""
+    silver_df = spark.read.parquet(str(silver_dir))
+    daily_gold_df = transform_gold(silver_df)
+    ticker_summary_df = transform_gold_summary(daily_gold_df)
+    write_gold(daily_gold_df, ticker_summary_df, output_dir)
+    return daily_gold_df, ticker_summary_df
+
+
 def run_silver(
     spark: SparkSession,
     bronze_dir: str | Path,
