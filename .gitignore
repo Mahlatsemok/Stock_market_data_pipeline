@@ -15,6 +15,7 @@ env/
 
 # Testing and coverage
 .pytest_cache/
+.pytest-tmp/
 .coverage
 htmlcov/
 
@@ -34,3 +35,9 @@ Thumbs.db
 
 # Generated Bronze ingestion snapshots
 data/bronze/
+
+# Generated pipeline outputs
+data/raw/
+data/processed/
+data/combined/
+data/quarantine/
