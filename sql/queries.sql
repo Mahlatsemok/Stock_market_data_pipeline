@@ -1,126 +1,47 @@
--- ============================================
--- STOCK MARKET DATA ANALYSIS
--- ============================================
+-- PostgreSQL warehouse analysis queries.
 
-
--- Count records for each stock
-
+-- Number of daily observations and date coverage by ticker.
 SELECT
-    Ticker,
-    COUNT(*) AS total_records
-FROM stocks
-GROUP BY Ticker;
-GROUP BY total_records DESC;
+    ticker,
+    COUNT(*) AS total_records,
+    MIN(date) AS first_date,
+    MAX(date) AS last_date
+FROM daily_performance
+GROUP BY ticker
+ORDER BY total_records DESC;
 
-
--- Highest closing price
-
-SELECT
-    Ticker,
-    MAX(Close) AS highest_closing_price
-FROM stocks
-GROUP BY Ticker
-ORDER BY highest_closing_price DESC;
-
-
--- Lowest closing price
-
-SELECT
-    Ticker,
-    MIN(Close) AS lowest_closing_price
-FROM stocks
-GROUP BY Ticker
-ORDER BY lowest_closing_price ASC;
-
-
--- Average closing price
-
-SELECT
-    Ticker,
-    AVG(Close) AS average_closing_price
-FROM stocks
-GROUP BY Ticker
-ORDER BY average_closing_price DESC;
-
-
--- Average trading volume
-
-SELECT
-    Ticker,
-    AVG(Volume) AS average_trading_volume
-FROM stocks
-GROUP BY Ticker
-ORDER BY average_trading_volume DESC;
-
-
--- Best daily return
-
-SELECT
-    Ticker,
-    MAX(Daily_Return) AS best_daily_return
-FROM stocks
-GROUP BY Ticker
-ORDER BY best_daily_return DESC;
-
-
--- Worst daily return
-
-SELECT
-    Ticker,
-    MIN(Daily_Return) AS worst_daily_return
-FROM stocks
-GROUP BY Ticker
-ORDER BY worst_daily_return ASC;
-
-
--- Average daily return
-
-SELECT
-    Ticker,
-    AVG(Daily_Return) AS average_daily_return
-FROM stocks
-GROUP BY Ticker
-ORDER BY average_daily_return DESC;
-
-
--- Daily return volatility per stock
-
-SELECT
-    Ticker,
-    AVG(Daily_Return) AS average_daily_return
-FROM stocks
-GROUP BY Ticker
-ORDER BY average_daily_return DESC;
-
-
--- Highest closing price across all stocks
-
-SELECT
-    Ticker,
-    Date,
-    Close
-FROM stocks
-ORDER BY Close DESC
+-- Highest closing prices in the warehouse.
+SELECT ticker, date, close
+FROM daily_performance
+ORDER BY close DESC
 LIMIT 10;
 
-
--- Highest trading volume days
-
-SELECT
-    Ticker,
-    Date,
-    Volume
-FROM stocks
-ORDER BY Volume DESC
+-- Highest-volume trading days.
+SELECT ticker, date, volume
+FROM daily_performance
+ORDER BY volume DESC
 LIMIT 10;
 
-
--- Best performing stock
-
+-- Latest summary for each ticker.
 SELECT
-    Ticker,
-    AVG(Daily_Return) AS average_daily_return
-FROM stocks
-GROUP BY Ticker
+    ticker,
+    latest_date,
+    latest_close,
+    average_daily_return,
+    volatility,
+    total_records
+FROM ticker_summary
+ORDER BY average_daily_return DESC NULLS LAST;
+
+-- Best average daily returns among tickers with at least one return.
+SELECT ticker, average_daily_return, volatility
+FROM ticker_summary
+WHERE average_daily_return IS NOT NULL
 ORDER BY average_daily_return DESC
-LIMIT 1;
+LIMIT 10;
+
+-- Daily observations for one ticker, including technical indicators.
+SELECT date, close, daily_return, ma5, ma20
+FROM daily_performance
+WHERE ticker = 'AAPL'
+ORDER BY date;
