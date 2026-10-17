@@ -9,8 +9,7 @@ from stock_pipeline.config import BRONZE_DATA_DIR
 
 
 def ingest_to_bronze(
-    #df: pd.DataFrame,
-    df: object,
+    df: pd.DataFrame,
     ticker: str,
     source: str = "yahoo_finance",
 ) -> Path:
