@@ -86,11 +86,6 @@ def transform_stock_data(
         df[REQUIRED_VALUE_COLUMNS].isna().any(axis=1).to_numpy()
     )
 
-    duplicate = df.duplicated(
-        subset=["Ticker", "Date"],
-        keep="first",
-    ).to_numpy()
-
     # Convert numeric fields without silently accepting bad values.
     numeric_values = pd.DataFrame(index=range(len(df)))
 
@@ -120,6 +115,23 @@ def transform_stock_data(
         | (high < close)
         | (low > open_price)
         | (low > close)
+    ).to_numpy()
+
+    # Deduplicate only among otherwise valid records. This keeps a valid
+    # observation when an earlier row for the same date is malformed.
+    otherwise_valid = ~(
+        invalid_date
+        | missing_values
+        | non_numeric_or_non_finite
+        | invalid_price
+        | invalid_volume
+        | invalid_ohlc
+    )
+    duplicate = np.zeros(len(df), dtype=bool)
+    valid_positions = np.flatnonzero(otherwise_valid)
+    duplicate[valid_positions] = df.iloc[valid_positions].duplicated(
+        subset=["Ticker", "Date"],
+        keep="first",
     ).to_numpy()
 
     # Give each rejected row one clear, deterministic reason.
