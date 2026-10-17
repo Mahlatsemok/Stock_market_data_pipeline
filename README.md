@@ -21,7 +21,7 @@ From the repository root, create and activate a virtual environment, then instal
 py -3.11 -m venv .venv
 .venv\Scripts\Activate.ps1
 python -m pip install --upgrade pip
-python -m pip install -e ".[dev]"
+python -m pip install -e ".[dev,spark]"
 ```
 
 Alternatively, install the pinned runtime packages with `python -m pip install -r requirements.txt`. The editable install is preferred for development because it makes the `stock_pipeline` package available directly from `src/`.
@@ -41,6 +41,18 @@ The pipeline downloads up to ten years of daily data for each configured symbol,
 Extraction validates ticker symbols before using them in requests or output paths, requests one ticker at a time with a 30-second timeout, and retries failed or incomplete responses up to three times by default. The delay between retries is configurable through the extractor's `retry_delay` argument.
 
 Each successful extraction is also saved as an immutable, timestamped CSV snapshot in `data/bronze/` with its source and UTC ingestion time. The transform step quarantines invalid rows with a reason, checks dates, finite numeric values, whole-number non-negative volume, positive prices, and consistent OHLC ranges, then writes clean records to `data/processed/`. When a date has both malformed and valid duplicates, it keeps the first valid record and quarantines the malformed row.
+
+## Run Spark Silver and Gold
+
+Install Java and the Spark extra using the setup command above, then run:
+
+```powershell
+python spark/run_pipeline.py
+```
+
+The job reads Bronze CSV snapshots from `data/bronze/`, writes validated and deduplicated Silver Parquet data to `data/silver/`, and writes two Gold Parquet datasets under `data/gold/`: `daily_performance/` contains daily returns, five- and twenty-day moving averages, and calendar fields; `ticker_summary/` contains one aggregated performance row per ticker. Use `--bronze-dir`, `--silver-dir`, or `--gold-dir` to override the paths.
+
+On Windows, local Spark file writes also require Hadoop's `winutils.exe`. Install a Hadoop Windows utilities build, then set `HADOOP_HOME` to the directory containing its `bin/winutils.exe`; Apache's [Windows troubleshooting guide](https://cwiki.apache.org/confluence/display/HADOOP2/WindowsProblems) describes this requirement.
 
 ## Run tests
 
