@@ -1,0 +1,12 @@
+stock_analytics:
+  target: dev
+  outputs:
+    dev:
+      type: postgres
+      host: "{{ env_var('DBT_HOST', 'localhost') }}"
+      port: "{{ env_var('DBT_PORT', '5432') | int }}"
+      user: "{{ env_var('DBT_USER', 'stock_user') }}"
+      password: "{{ env_var('DBT_ENV_SECRET_PASSWORD') }}"
+      dbname: "{{ env_var('DBT_DATABASE', 'stock_market') }}"
+      schema: "{{ env_var('DBT_SCHEMA', 'public') }}"
+      threads: 4
