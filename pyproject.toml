@@ -25,6 +25,10 @@ spark = [
 postgres = [
     "psycopg[binary]>=3.2,<4",
 ]
+dbt = [
+    "dbt-core>=1.12,<1.13",
+    "dbt-postgres>=1.11,<2",
+]
 
 [tool.setuptools.packages.find]
 where = ["src"]
