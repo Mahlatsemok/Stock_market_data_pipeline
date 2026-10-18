@@ -79,6 +79,37 @@ The loader creates the tables and indexes from `sql/schema.sql` when needed. It 
 
 Run the sample warehouse queries in `sql/queries.sql` after the load.
 
+## Build dbt analytics models
+
+Phase 6 uses dbt Core with the PostgreSQL adapter. Install the optional dbt dependencies:
+
+```powershell
+python -m pip install -e ".[dbt]"
+```
+
+Copy the safe profile template to your user-level dbt configuration directory, then set the connection variables in PowerShell. The database and source schema should match the PostgreSQL settings used in Phase 5:
+
+```powershell
+New-Item -ItemType Directory -Force "$env:USERPROFILE\.dbt"
+Copy-Item dbt\stock_analytics\profiles.yml.example "$env:USERPROFILE\.dbt\profiles.yml"
+$env:DBT_HOST = "localhost"
+$env:DBT_PORT = "5432"
+$env:DBT_USER = "stock_user"
+$env:DBT_ENV_SECRET_PASSWORD = "your_password"
+$env:DBT_DATABASE = "stock_market"
+$env:DBT_SCHEMA = "public"
+$env:DBT_SOURCE_SCHEMA = "public"
+```
+
+Check the profile connection and build the models and data tests:
+
+```powershell
+dbt debug --project-dir dbt\stock_analytics --profiles-dir "$env:USERPROFILE\.dbt"
+dbt build --project-dir dbt\stock_analytics --profiles-dir "$env:USERPROFILE\.dbt"
+```
+
+The models read the Phase 5 `daily_performance` and `ticker_summary` source tables. Staging views are created in `dbt_staging`; the daily fact, ticker dimension, and monthly performance table are created in `dbt_analytics`. The project includes source, column, and grain/count checks. Keep your real `profiles.yml` and password out of Git.
+
 ## Run tests
 
 ```powershell
@@ -93,7 +124,7 @@ src/stock_pipeline/     Extraction, Bronze, transforms, quality, and loading cod
 spark/                  Bronze-to-Silver Spark processing
 sql/                    Warehouse schema and analysis queries
 tests/                  Automated tests
-dbt/                    dbt project (analytics models are a later roadmap step)
+dbt/                    dbt PostgreSQL staging views, marts, and data tests
 dashboard/              Streamlit dashboard (later roadmap step)
 airflow/                Airflow DAG (later roadmap step)
 data/                   Local pipeline outputs; treat these as generated data
