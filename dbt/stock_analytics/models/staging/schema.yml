@@ -1,0 +1,90 @@
+version: 2
+
+sources:
+  - name: stock_warehouse
+    description: PostgreSQL Gold tables loaded by the Spark-to-Postgres step.
+    schema: "{{ env_var('DBT_SOURCE_SCHEMA', 'public') }}"
+    tables:
+      - name: daily_performance
+        description: One validated Gold row per ticker and trading date.
+        columns:
+          - name: ticker
+            data_tests:
+              - not_null
+          - name: date
+            data_tests:
+              - not_null
+          - name: close
+            data_tests:
+              - not_null
+      - name: ticker_summary
+        description: Aggregated Gold performance metrics for each ticker.
+        columns:
+          - name: ticker
+            data_tests:
+              - not_null
+              - unique
+
+models:
+  - name: stg_daily_performance
+    description: Cleanly named source view for daily Gold stock metrics.
+    columns:
+      - name: ticker
+        data_tests:
+          - not_null
+      - name: date
+        data_tests:
+          - not_null
+      - name: close
+        data_tests:
+          - not_null
+      - name: volume
+        data_tests:
+          - not_null
+
+  - name: stg_ticker_summary
+    description: Cleanly named source view for per-ticker Gold summaries.
+    columns:
+      - name: ticker
+        data_tests:
+          - not_null
+          - unique
+
+  - name: fct_daily_performance
+    description: Daily stock metrics enriched with return direction and moving-average position.
+    columns:
+      - name: ticker
+        data_tests:
+          - not_null
+      - name: date
+        data_tests:
+          - not_null
+      - name: daily_return_direction
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['first_observation', 'gain', 'loss', 'unchanged']
+
+  - name: dim_ticker
+    description: One ticker dimension row with performance metrics and ranking.
+    columns:
+      - name: ticker
+        data_tests:
+          - not_null
+          - unique
+      - name: average_return_rank
+        data_tests:
+          - not_null
+
+  - name: agg_monthly_performance
+    description: Monthly price, volume, trading-day, and return metrics by ticker.
+    columns:
+      - name: ticker
+        data_tests:
+          - not_null
+      - name: year
+        data_tests:
+          - not_null
+      - name: month
+        data_tests:
+          - not_null
