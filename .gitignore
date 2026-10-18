@@ -43,3 +43,10 @@ data/combined/
 data/quarantine/
 data/silver/
 data/gold/
+
+# dbt local state, downloaded packages, and credentials
+dbt/stock_analytics/target/
+dbt/stock_analytics/dbt_packages/
+dbt/stock_analytics/logs/
+dbt/stock_analytics/profiles.yml
+dbt/stock_analytics/.env
