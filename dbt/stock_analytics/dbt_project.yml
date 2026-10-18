@@ -1,0 +1,23 @@
+name: stock_analytics
+version: "1.0.0"
+config-version: 2
+require-dbt-version: [">=1.12.0", "<2.0.0"]
+
+profile: stock_analytics
+
+model-paths: ["models"]
+test-paths: ["tests"]
+macro-paths: ["macros"]
+
+clean-targets:
+  - "target"
+  - "dbt_packages"
+
+models:
+  stock_analytics:
+    staging:
+      +schema: dbt_staging
+      +materialized: view
+    marts:
+      +schema: dbt_analytics
+      +materialized: table
