@@ -116,6 +116,8 @@ The models read the Phase 5 `daily_performance` and `ticker_summary` source tabl
 python -m pytest
 ```
 
+GitHub Actions runs this suite on pushes, pull requests, and manual runs using Python 3.11 and 3.14. The workflow installs the project with its development and Spark dependencies and sets up Java for the Spark tests. Review the **Tests** check on the Actions tab after pushing a change.
+
 ## Repository layout
 
 ```text
