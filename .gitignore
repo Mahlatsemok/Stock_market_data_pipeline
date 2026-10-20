@@ -29,6 +29,7 @@ dist/
 .idea/
 .DS_Store
 Thumbs.db
+.agents/skills/developing-with-streamlit
 
 # Logs
 *.log
