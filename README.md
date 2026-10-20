@@ -110,6 +110,18 @@ dbt build --project-dir dbt\stock_analytics --profiles-dir "$env:USERPROFILE\.db
 
 The models read the Phase 5 `daily_performance` and `ticker_summary` source tables. Staging views are created in `dbt_staging`; the daily fact, ticker dimension, and monthly performance table are created in `dbt_analytics`. The project includes source, column, and grain/count checks. Keep your real `profiles.yml` and password out of Git.
 
+## Run the Streamlit dashboard
+
+The dashboard reads the PostgreSQL Gold tables created in Phase 5. Install its optional dependencies and configure the same `DATABASE_URL` used by the warehouse loader:
+
+```powershell
+python -m pip install -e ".[dashboard]"
+$env:DATABASE_URL = "postgresql+psycopg://stock_user:YOUR_REAL_PASSWORD@localhost:5432/stock_market"
+streamlit run dashboard/app.py
+```
+
+Load the Gold datasets into PostgreSQL before opening the dashboard. It provides ticker and date filters, daily close and moving-average charts, daily return and volume charts, key performance metrics, and a ticker comparison table. Database credentials are read from the environment and must not be committed.
+
 ## Run tests
 
 ```powershell
