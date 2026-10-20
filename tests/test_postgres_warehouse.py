@@ -45,6 +45,38 @@ def test_database_record_conversion_rejects_missing_required_columns():
         )
 
 
+def test_schema_initialization_ignores_semicolons_in_sql_comments(tmp_path):
+    schema_path = tmp_path / "schema.sql"
+    schema_path.write_text(
+        "-- This comment contains a semicolon; it is not a SQL statement.\n"
+        "CREATE TABLE example (id INTEGER);\n"
+        "-- Another comment; also ignored.\n"
+        "CREATE INDEX example_id_idx ON example (id);\n",
+        encoding="utf-8",
+    )
+
+    class FakeConnection:
+        def __init__(self):
+            self.statements = []
+
+        def exec_driver_sql(self, statement):
+            self.statements.append(statement.strip())
+
+    connection = FakeConnection()
+
+    class FakeEngine:
+        @contextmanager
+        def begin(self):
+            yield connection
+
+    postgres_module.initialize_postgres_schema(FakeEngine(), schema_path)
+
+    assert connection.statements == [
+        "CREATE TABLE example (id INTEGER)",
+        "CREATE INDEX example_id_idx ON example (id)",
+    ]
+
+
 def test_gold_loader_initializes_schema_and_upserts_both_datasets(monkeypatch):
     class FakeConnection:
         def __init__(self):
