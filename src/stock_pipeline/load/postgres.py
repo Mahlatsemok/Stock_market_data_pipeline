@@ -97,7 +97,11 @@ def initialize_postgres_schema(engine, schema_path: str | Path | None = None) ->
     path = Path(schema_path) if schema_path else (
         Path(__file__).resolve().parents[3] / "sql" / "schema.sql"
     )
-    schema_sql = path.read_text(encoding="utf-8")
+    schema_sql = "\n".join(
+        line
+        for line in path.read_text(encoding="utf-8").splitlines()
+        if not line.lstrip().startswith("--")
+    )
     with engine.begin() as connection:
         for statement in schema_sql.split(";"):
             if statement.strip():
