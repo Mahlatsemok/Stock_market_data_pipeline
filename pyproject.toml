@@ -29,6 +29,11 @@ dbt = [
     "dbt-core>=1.12,<1.13",
     "dbt-postgres>=1.11,<2",
 ]
+dashboard = [
+    "streamlit>=1.40,<2",
+    "plotly>=5,<7",
+    "psycopg[binary]>=3.2,<4",
+]
 
 [tool.setuptools.packages.find]
 where = ["src"]
