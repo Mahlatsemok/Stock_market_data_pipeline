@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 
 import yaml
@@ -7,7 +8,9 @@ import yaml
 # PROJECT ROOT
 # ============================================================
 
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
+PROJECT_ROOT = Path(
+    os.environ.get("STOCK_PIPELINE_ROOT", Path(__file__).resolve().parents[2])
+).resolve()
 
 
 # ============================================================

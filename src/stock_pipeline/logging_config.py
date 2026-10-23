@@ -1,11 +1,6 @@
 import logging
 
-from pathlib import Path
-
-
-PROJECT_ROOT = Path(
-    __file__
-).resolve().parents[2]
+from stock_pipeline.config import PROJECT_ROOT
 
 LOG_DIR = PROJECT_ROOT / "logs"
 

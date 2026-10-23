@@ -1,0 +1,57 @@
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-stock_market}
+      POSTGRES_USER: ${POSTGRES_USER:-stock_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+    ports:
+      - "${POSTGRES_HOST_PORT:-5432}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-stock_user} -d ${POSTGRES_DB:-stock_market}"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    restart: unless-stopped
+
+  pipeline:
+    build: .
+    profiles: ["pipeline"]
+    environment: &app-environment
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+      POSTGRES_DB: ${POSTGRES_DB:-stock_market}
+      POSTGRES_USER: ${POSTGRES_USER:-stock_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - pipeline-data:/app/data
+      - pipeline-logs:/app/logs
+    command:
+      - /bin/sh
+      - -c
+      - >-
+        python pipeline.py
+        && python spark/run_pipeline.py
+        && python spark/load_postgres.py
+        && dbt build --project-dir dbt/stock_analytics --profiles-dir /home/stockapp/.dbt
+
+  dashboard:
+    build: .
+    environment: *app-environment
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "${DASHBOARD_PORT:-8501}:8501"
+    command: ["streamlit", "run", "dashboard/app.py", "--server.address=0.0.0.0"]
+    restart: unless-stopped
+
+volumes:
+  postgres-data:
+  pipeline-data:
+  pipeline-logs:

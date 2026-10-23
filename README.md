@@ -4,7 +4,7 @@ A Python project for collecting daily stock prices, validating and transforming 
 
 ## Current project status
 
-The repository contains a working Python extraction and transformation pipeline, Bronze CSV ingestion, Spark Silver and Gold processing, a PostgreSQL warehouse load, SQL analysis queries, tests, and starter files for dbt, Streamlit, Airflow, and Docker. Several later-stage components are still being built. See the implementation roadmap below for the intended order.
+The repository contains an end-to-end stock data pipeline with Bronze ingestion, Spark Silver and Gold processing, a PostgreSQL warehouse, dbt analytics, automated tests, a Streamlit dashboard, an Airflow DAG, and a Docker Compose runtime. See the implementation roadmap below for the project phases.
 
 ## Requirements
 
@@ -122,6 +122,39 @@ streamlit run dashboard/app.py
 
 Load the Gold datasets into PostgreSQL before opening the dashboard. It provides ticker and date filters, daily close and moving-average charts, daily return and volume charts, key performance metrics, and a ticker comparison table. Database credentials are read from the environment and must not be committed.
 
+## Run with Docker Compose (Phase 10)
+
+Docker Compose starts PostgreSQL and the Streamlit dashboard. The optional
+`pipeline` service runs extraction, Spark Silver and Gold processing, the
+PostgreSQL load, and `dbt build` in sequence. Generated data, the database,
+and pipeline logs are persisted in named Docker volumes.
+
+From PowerShell, copy the example environment file and replace the sample
+database password with a private value:
+
+```powershell
+Copy-Item .env.example .env
+```
+
+Run the complete pipeline once (the first build downloads the Apache Spark
+runtime and installs the Python, PostgreSQL, dbt, and dashboard dependencies):
+
+```powershell
+docker compose --profile pipeline run --build --rm pipeline
+```
+
+After it finishes successfully, start the dashboard:
+
+```powershell
+docker compose up --build -d dashboard
+```
+
+Open <http://localhost:8501>. To inspect service status and dashboard output,
+use `docker compose ps` and `docker compose logs -f dashboard`. Stop the
+services with `docker compose down`; this keeps the database, pipeline data,
+and logs volumes. The Airflow installation described in Phase 9 remains a
+separate WSL2 service.
+
 ## Run tests
 
 ```powershell
@@ -139,8 +172,9 @@ spark/                  Bronze-to-Silver Spark processing
 sql/                    Warehouse schema and analysis queries
 tests/                  Automated tests
 dbt/                    dbt PostgreSQL staging views, marts, and data tests
-dashboard/              Streamlit dashboard (later roadmap step)
+dashboard/              Streamlit dashboard
 airflow/dags/           Airflow orchestration DAG
+docker/                 Docker container entrypoint
 data/                   Local pipeline outputs; treat these as generated data
 ```
 

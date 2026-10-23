@@ -1,0 +1,32 @@
+.git
+.github
+.vscode
+.idea
+.venv
+venv
+.airflow-venv
+__pycache__
+*.py[cod]
+.pytest_cache
+.pytest-*
+.coverage
+htmlcov
+.env
+.env.*
+!.env.example
+*.log
+logs
+.DS_Store
+Thumbs.db
+
+# Generated market data and local build output
+data
+build
+dist
+*.egg-info
+
+# Local dbt state and credentials
+dbt/stock_analytics/target
+dbt/stock_analytics/dbt_packages
+dbt/stock_analytics/logs
+dbt/stock_analytics/profiles.yml
