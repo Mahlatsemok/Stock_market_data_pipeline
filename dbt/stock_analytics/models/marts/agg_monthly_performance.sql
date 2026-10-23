@@ -39,4 +39,4 @@ select
     total_volume,
     trading_days,
     average_daily_return
-from monthly_metrics
+from with_prior_month

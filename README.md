@@ -140,7 +140,7 @@ sql/                    Warehouse schema and analysis queries
 tests/                  Automated tests
 dbt/                    dbt PostgreSQL staging views, marts, and data tests
 dashboard/              Streamlit dashboard (later roadmap step)
-airflow/                Airflow DAG (later roadmap step)
+airflow/dags/           Airflow orchestration DAG
 data/                   Local pipeline outputs; treat these as generated data
 ```
 
@@ -158,6 +158,41 @@ Work through the phases in order, completing and reviewing each phase before mov
 8. Streamlit dashboard
 9. Airflow orchestration
 10. Docker and final release
+
+## Airflow orchestration (Phase 9)
+
+The `stock_market_data_pipeline` DAG runs the existing stages in order:
+
+1. Extract, transform, validate, and write Bronze data with `pipeline.py`.
+2. Build Silver and Gold datasets with Spark.
+3. Load the Gold datasets into PostgreSQL.
+4. Run `dbt build` to build and test analytics models.
+
+Airflow does not run natively on Windows. Use WSL2 (or another Linux host) for
+the Airflow installation, and keep it in a separate virtual environment from
+the project so Airflow's dependency constraints do not conflict with Spark,
+dbt, or the dashboard. Install the project dependencies in the project's own
+Linux virtual environment, then configure Airflow to invoke that environment:
+
+```bash
+export STOCK_PIPELINE_PYTHON="/path/to/project-venv/bin/python"
+export STOCK_PIPELINE_DBT="/path/to/project-venv/bin/dbt"
+export AIRFLOW_HOME="$HOME/airflow"
+export AIRFLOW__CORE__DAGS_FOLDER="$PWD/airflow/dags"
+export DATABASE_URL="postgresql+psycopg://USER:PASSWORD@HOST:5432/stock_market"
+export DBT_PROFILES_DIR="$HOME/.dbt"
+```
+
+Create the Airflow environment and install Airflow with the matching official
+constraints file for your Python version. Install the Standard provider too;
+the DAG uses its `BashOperator`. Initialize Airflow with `airflow standalone`,
+then enable and trigger `stock_market_data_pipeline` in the Airflow UI. The
+schedule is weekdays at 23:00 UTC. Ensure `DATABASE_URL` points to a PostgreSQL
+server reachable from WSL2, and configure the dbt profile in
+`$DBT_PROFILES_DIR/profiles.yml`.
+
+For Windows-specific installation guidance, use the [Airflow Quick Start](https://airflow.apache.org/docs/apache-airflow/stable/start.html)
+and [BashOperator documentation](https://airflow.apache.org/docs/apache-airflow-providers-standard/stable/operators/bash.html).
 
 ## Data and credentials
 

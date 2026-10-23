@@ -34,6 +34,14 @@ Thumbs.db
 # Logs
 *.log
 
+# Airflow local configuration, metadata database, logs, and credentials
+airflow/airflow.cfg
+airflow/airflow.db*
+airflow/logs/
+airflow/webserver_config.py
+airflow/simple_auth_manager_passwords.json
+.airflow-venv/
+
 # Generated Bronze ingestion snapshots
 data/bronze/
 
